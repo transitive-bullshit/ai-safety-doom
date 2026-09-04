@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #f4ecdd;
+  --foreground: #2d2a26;
+  --card: #f8f0df;
+  --card-foreground: #2d2a26;
+  --popover: #f8f0df;
+  --popover-foreground: #2d2a26;
+  --primary: #2d2a26;
+  --primary-foreground: #f8f0df;
+  --secondary: #e8dece;
+  --secondary-foreground: #38332d;
+  --muted: #e8dece;
+  --muted-foreground: #756d63;
+  --accent: #ead8bb;
+  --accent-foreground: #332d25;
+  --destructive: #a14737;
+  --border: #d8cbb8;
+  --input: #d8cbb8;
+  --ring: #a66f33;
+  --radius: 0.5rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+button:not(:disabled),
+[role='button']:not(:disabled) {
+  cursor: pointer;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ring) 25%, transparent);
+}
