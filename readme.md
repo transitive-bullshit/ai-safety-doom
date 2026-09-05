@@ -34,7 +34,7 @@ _Human feedback. At close range._
 
 _Have you tried turning it off?_
 
-<p align="center">
+<p>
   <a href="https://p-doom.transitivebullsh.it"><strong>▶ ENTER THE LAB</strong></a>
 </p>
 
