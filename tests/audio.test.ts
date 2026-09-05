@@ -617,9 +617,14 @@ void test('plasma fires the original prepared recording once at native pitch and
   assert.equal(source.started, output.currentTime)
   assert.equal(source.stopped, output.currentTime + sample.duration)
   assert.ok(reaches(source, output.destination))
-  assert.equal(reaches(source, output.destination, output.compressors[0]), false)
+  assert.equal(
+    reaches(source, output.destination, output.compressors[0]),
+    false
+  )
   source.onended?.()
-  assert.ok(output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0))
+  assert.ok(
+    output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0)
+  )
 })
 
 void test('rapid recorded plasma overlaps only its natural tails and remains bounded, muted and disposable', (context) => {
@@ -628,13 +633,21 @@ void test('rapid recorded plasma overlaps only its natural tails and remains bou
   const before = output.sources.length
   const beforeNodes = output.nodes.length
   audio.setMuted(true)
-  const master = output.gains.find((gain) => gain.connections.has(output.destination))!
+  const master = output.gains.find((gain) =>
+    gain.connections.has(output.destination)
+  )!
   for (let shot = 0; shot < 80; shot++) {
     output.currentTime = shot * 0.11
     audio.effect('shot', 2)
-    const live = output.sources.slice(before).filter((source) => source.connections.size)
+    const live = output.sources
+      .slice(before)
+      .filter((source) => source.connections.size)
     assert.ok(live.length <= Math.ceil(sample.duration / 0.11))
-    assert.ok(live.every((source) => source.buffer === sample && source.playbackRate.value === 1))
+    assert.ok(
+      live.every(
+        (source) => source.buffer === sample && source.playbackRate.value === 1
+      )
+    )
   }
   for (let shot = 0; shot < 100; shot++) audio.effect('shot', 2)
   const pulses = output.sources.slice(before)
@@ -650,7 +663,9 @@ void test('rapid recorded plasma overlaps only its natural tails and remains bou
   audio.resume()
   assert.equal(master.gain.value, 0)
   for (const source of pulses) source.onended?.()
-  assert.ok(output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0))
+  assert.ok(
+    output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0)
+  )
   audio.dispose()
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
 })
@@ -668,7 +683,9 @@ void test('missing plasma recordings leave a bounded emergency cue and do not re
   audio.effect('shot', 2)
   const fallback = output.sources.slice(before)
   assert.ok(fallback.length > 0)
-  assert.ok(fallback.every((source) => source.stopped <= output.currentTime + 0.11))
+  assert.ok(
+    fallback.every((source) => source.stopped <= output.currentTime + 0.11)
+  )
   audio.effect('shot', 0)
   audio.effect('shot', 1)
   audio.effect('hurt')
@@ -682,14 +699,18 @@ void test('the selected plasma idle loop fades through the shared mix without du
   state.audio.setWeapon(2)
   state.audio.resume()
   const { audio, output } = state
-  const loops = () => output.sources.filter((source) => source.buffer === sample)
+  const loops = () =>
+    output.sources.filter((source) => source.buffer === sample)
   assert.equal(loops().length, 1)
   const source = loops()[0]!
   const gain = output.gains.find((node) => source.connections.has(node))!
   assert.ok(gain.gain.value > 0 && gain.gain.value < 0.2)
   assert.equal(source.stopped, Infinity)
   assert.ok(reaches(source, output.destination))
-  assert.equal(reaches(source, output.destination, output.compressors[0]), false)
+  assert.equal(
+    reaches(source, output.destination, output.compressors[0]),
+    false
+  )
   for (let change = 0; change < 20; change++) {
     audio.setWeapon(1)
     assert.equal(gain.gain.value, 0)
@@ -697,7 +718,9 @@ void test('the selected plasma idle loop fades through the shared mix without du
     audio.setWeapon(2)
   }
   assert.equal(loops().length, 1)
-  const master = output.gains.find((node) => node.connections.has(output.destination))!
+  const master = output.gains.find((node) =>
+    node.connections.has(output.destination)
+  )!
   audio.setMuted(true)
   assert.equal(master.gain.value, 0)
   audio.pause()
@@ -713,7 +736,11 @@ void test('the selected plasma idle loop fades through the shared mix without du
   audio.finish()
   assert.equal(gain.gain.value, 0)
   context.mock.timers.tick(10000)
-  assert.equal(output.state, 'suspended', 'an infinite idle bed must not keep terminal audio alive')
+  assert.equal(
+    output.state,
+    'suspended',
+    'an infinite idle bed must not keep terminal audio alive'
+  )
   audio.dispose()
   assert.ok(source.stopCalls > 0)
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
@@ -1021,7 +1048,11 @@ void test('every enemy has distinct awareness, attack and death profiles with a 
         (source) => source.frequency.events.length > 0
       )
       if (event === 'enemy' && (kind === 'deception' || kind === 'paperclip'))
-        assert.equal(oscillators.length, 0, 'these weapon reports have no pitched notes')
+        assert.equal(
+          oscillators.length,
+          0,
+          'these weapon reports have no pitched notes'
+        )
       else assert.ok(oscillators.length > 0)
       // Every tonal excitation is rough and filtered, with restrained pitch travel.
       assert.ok(oscillators.every((source) => source.type === 'sawtooth'))
@@ -1078,7 +1109,9 @@ void test('enemy launches distinguish an unpitched fire roar, dry steel report a
       sources,
       noise: sources.filter((source) => source.buffer),
       tones: sources.filter((source) => source.frequency.events.length),
-      sends: gains.filter(({ gain }) => !gain.events.length).map(({ gain }) => gain.value),
+      sends: gains
+        .filter(({ gain }) => !gain.events.length)
+        .map(({ gain }) => gain.value),
       holds: gains.flatMap(({ gain }) =>
         gain.events.filter(
           (event) => event.type === 'set' && event.value > 0.01
@@ -1101,7 +1134,9 @@ void test('enemy launches distinguish an unpitched fire roar, dry steel report a
   }
   assert.equal(deception.tones.length, 0)
   assert.ok(deception.sources.every((source) => source.started < 0.02))
-  assert.ok(deception.noise.some((source) => source.stopped - source.started >= 0.4))
+  assert.ok(
+    deception.noise.some((source) => source.stopped - source.started >= 0.4)
+  )
   assert.ok(deception.holds.some((event) => event.time > 0.1))
   assert.equal(paperclip.tones.length, 0)
   assert.ok(paperclip.sources.every((source) => source.started < 0.01))

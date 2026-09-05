@@ -1068,9 +1068,10 @@ if (retroShutdownTime >= 0.0) {
               : 'fire'
         const sprite = new Sprite(
           new SpriteMaterial({
-            map: profile && profile !== 'deception'
-              ? this.enemyProjectileMaps[profile]
-              : this.energyMaps[kind],
+            map:
+              profile && profile !== 'deception'
+                ? this.enemyProjectileMaps[profile]
+                : this.energyMaps[kind],
             transparent: true,
             depthWrite: false,
             alphaTest: 0.2
@@ -1081,12 +1082,12 @@ if (retroShutdownTime >= 0.0) {
             map: this.glowMap,
             color:
               profile === 'paperclip'
-                  ? '#e9edc7'
-                  : kind === 'shutdown'
-                    ? '#b9e66e'
-                    : kind === 'plasma'
-                      ? '#58d6eb'
-                      : '#ff883e',
+                ? '#e9edc7'
+                : kind === 'shutdown'
+                  ? '#b9e66e'
+                  : kind === 'plasma'
+                    ? '#58d6eb'
+                    : '#ff883e',
             transparent: true,
             depthWrite: false,
             blending: AdditiveBlending,
@@ -1161,9 +1162,7 @@ if (retroShutdownTime >= 0.0) {
             projectile.z - (projectile.dz / speed) * behind
           )
           segment.scale.setScalar(
-            profile === 'sam'
-              ? 0.52 - index * 0.2
-              : 0.2 - index * 0.07
+            profile === 'sam' ? 0.52 - index * 0.2 : 0.2 - index * 0.07
           )
           segment.material.rotation = 0
         }
@@ -1175,7 +1174,8 @@ if (retroShutdownTime >= 0.0) {
           : projectile.kind === 'rocket'
             ? 0.55
             : 0.4
-      const energyTime = profile === 'deception' && this.reducedMotion.matches ? 0 : world.time
+      const energyTime =
+        profile === 'deception' && this.reducedMotion.matches ? 0 : world.time
       sprite.scale.setScalar(size * (1 + Math.sin(energyTime * 31) * 0.08))
       sprite.material.rotation = energyTime * 5
     }
