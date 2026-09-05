@@ -1,0 +1,202 @@
+# P(DOOM) playable demo verification
+
+Verified September 5, 2026.
+
+## Environment
+
+- macOS, arm64, Apple M3 Pro (12 CPU cores).
+- Automated browser journeys: Google Chrome 152.0.7977.77, 1440 × 1000 viewport.
+- Visual checks: Codex in-app Chromium at 1024 × 720 and 1440 × 900, plus the default 1280 × 720 view.
+- Production build served locally with `pnpm start`; title, difficulty, asset loading, entry, and pause verified with no browser warnings/errors.
+- Edge is a target browser but is not installed on this reference machine, so there is no separate Edge verification claim. Firefox, Safari, and mobile are outside this milestone.
+
+## Checks
+
+Formatting, lint, TypeScript, and all 83 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
+
+`pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
+
+## Pistol, shutdown discharge, and death transition
+
+System Prompt now uses a 310 ms recorded report with a sharp attack and held body, decoded silently alongside the eight existing recordings. Each of the nine files loads independently; a missing pistol report uses its heavier synthesis fallback without discarding the shotgun, player vocals, or monster deaths. Shutdown's discharge adds a held blast, low impact, and delayed electrical aftershocks, with unchanged charge timing, ammunition cost, projectile, and damage.
+
+All 38 audio, 41 model, and four notification tests pass, for 83 total. Five new audio cases cover first pistol playback at native pitch, independent fallback and preservation of prepared assets, 280 ms cadence overlap, mute/pause/resume, bounded voices, shutdown's held body and delayed arcs, shared compressor routing, and full node cleanup. TypeScript and the focused audio lint check pass.
+
+Eighteen 48 kHz stereo Chrome `OfflineAudioContext` renders compare the previous and current pistol, fallback, shutdown, rapid pistol fire, dense combat, isolated shotgun, player pain/death, and music. The pistol attack RMS increases from 0.051791 to 0.133919 (+8.25 dB); body RMS increases from 0.006746 to 0.173268 (+28.19 dB). Shutdown body RMS increases from 0.068832 to 0.180179 (+8.36 dB), with +13.45 dB sustained energy over 100–350 ms. Rapid pistol fire peaks at 0.599617, and deliberately dense combat peaks at 0.786878 with 2.08 dB headroom. All samples are finite, no output clips, and there are no browser audio errors. Player pain/death render PCM is exactly unchanged; shotgun and music peaks are identical, with only one-step 16-bit rounding differences in a few samples. All eight existing WAV hashes remain unchanged. These are waveform checks, not a perceptual listening review. Evidence: `/private/tmp/pdoom-heavy-weapons-audition/measurements.json` and the adjacent source snapshots and WAVs.
+
+Two normal-input Chrome death journeys pass. Staggered blood columns cover the frozen game before the results menu appears at 1.4 seconds, while the existing death scream finishes. Holding Space through the fatal hit cannot trigger Retry. Retry and Return clear the transition for the next run. Reduced motion shows the covered results immediately. Evidence: `/private/tmp/pdoom-death-transition-proof/`.
+
+Five focused social-link Chrome tests and eight existing title/credits regressions pass. The lower-right X/GitHub icons fit at 1024 × 720, 1440 × 900, and 1280 × 600 without overlapping menu content or footer text. Checks cover 48-pixel padded hit areas, hover/focus colors, arrow/Tab navigation, padded click and Enter activation, correct new-tab destinations, and credits Space playback and Escape return. Read-only Web Audio observation confirms that icon hover and activation schedule the same impact profiles as existing menu actions, without replaying the hover cue while moving inside an already focused icon. GPT-6 ASTRA leads Built With; notification fragments omit terminal periods while multi-sentence jokes retain internal punctuation. Social screenshots: `/private/tmp/pdoom-social-links-proof/`.
+
+The refreshed production build passed a normal-input 99% run: all nine recordings decoded, 15 actual pistol shots used the new 310 ms recording at native pitch, and the blood transition completed before the death menu. Holding Fire through death left the results intact. The full 1.471-second death recording ended before its context suspended, with 252 ms of additional tail clearance. Return cleared the curtain; title/credits icon hover, credits Space, and Escape worked, with no page or console errors. Screenshots were inspected. Evidence: `/private/tmp/pdoom-final-polish-production-proof/`.
+
+## Pressure-seal doors
+
+Lab doors now open with bolt release, a sustained descending pressure hiss, and a low panel motor. Closing uses a rising suction hiss and return motor; a separate locking impact and air chuff occur at the actual fully closed position. E toggles regular doors, occupied doorways refuse to close, and entering a closing doorway reverses it before it can trap the player or a living enemy. Secret panels remain open after discovery. Player vocals, shotgun files/playback methods, and original Doom monster recordings are unchanged.
+
+All 41 model and 33 audio tests pass, including six new door-mechanics cases and four audio phase/lifecycle cases. They cover transition uniqueness, exact sealing, manual reversal, player and enemy footprint clearance, corpse handling, collision, inactive simulation silence, sustained air envelopes, spatial attenuation/panning, compressor routing, bounded overlapping sounds, pause/mute, and cleanup. Formatting, lint, TypeScript, all 78 unit tests, and the production build pass.
+
+The existing normal-input Chrome movement/combat/door journey now closes a lab door, pauses it mid-travel, confirms its aperture remains fixed, resumes through the seal, reopens it, and crosses the doorway. That journey passes. Offline 48 kHz renders of opening, closing, sealing, a full cycle, and dense combat contain no clipped or nonfinite samples. Dense combat peaks at 0.7293 (2.74 dB headroom); isolated shotgun peak remains 0.468403608. These are waveform checks, not a perceptual listening review. Evidence: `/private/tmp/pdoom-pressure-door-audition/`.
+
+A second normal-input browser journey used read-only Web Audio observation to verify the real opening, closing, and completed sealing cues. The game audio clock and partially closed aperture both remained exactly fixed during a 450 ms pause, then the door sealed, reopened, and allowed passage. No page errors occurred. The observer distinguishes the separate menu and gameplay contexts and records scheduled frequencies rather than inspecting stale instantaneous `AudioParam.value`. Evidence: `/private/tmp/pdoom-pressure-door-browser-proof/`.
+
+The same normal-input cycle passes on the refreshed production preview at port 3001, with one observed opening cue, one completed sealing cue, preserved pause behavior, and no page errors. Evidence: `/private/tmp/pdoom-pressure-door-production-proof/`.
+
+## Original Doom monster deaths
+
+Enemy kills now play original Doom recordings: Deceptive Alignment uses an imp, Sycophancy a zombie, Paperclip Maximizer a demon, and Sam a Baron. The four WAVs preserve native 11,025 Hz mono 8-bit samples after DMX padding removal. Each kill plays one complete recording at its original pitch through positional attenuation/panning, the existing compressor, and short room reflections. Awareness and attack cues remain distinct synthesized effects; individual missing recordings retain their previous synthesized death fallback. The credits heading is now “Made By” and the roll includes id Software's sound credit. [Exact sources and checksums](../public/game/audio/README.md#original-doom-monster-death-recordings).
+
+All 29 audio tests pass, including silent parallel preload, independent fallback, four-way recording selection, no doubled synthetic death, native pitch/full duration, compressor routing, position/distance, bounded simultaneous kills, pause/mute, cleanup, and unchanged player voice behavior. Hashes confirm all three approved player vocal WAVs, the `playerVoice()` method, the shotgun WAV, and both shotgun methods are byte-for-byte unchanged. The complete 68-test suite and production build pass.
+
+Chrome 48 kHz offline renders contain only finite samples and no clipped output. The dense combat mix peaks at 0.729788 (2.736 dB headroom), and the isolated reel peaks at 0.513346. Isolated shotgun peak remains 0.468403608. These are waveform and playback checks, not a perceptual listening review. Evidence: `/private/tmp/pdoom-doom-death-audition/`.
+
+A full normal-input 10% Chrome run defeated Sam and activated shutdown in 114.7 seconds. It observed six imp, six zombie, six demon, and one Baron recording playing on actual enemy kills. All 19 sources completed at playback rate 1, detune 0, with no looping; all four enemy kinds produced their vanquish notices. No page or console errors occurred. Evidence: `/private/tmp/pdoom-doom-death-browser-proof/`. The five credits journeys also pass across the focused runs; one native End-key check failed during concurrent browser activity, then passed twice in isolation without a code change. Evidence: `/tmp/pdoom-doom-death-credits-check/` and `/tmp/pdoom-doom-death-credits-reduced/`.
+
+The refreshed production preview on port 3001 served all four Doom WAVs with matching source-file hashes, decoded all eight recordings, displayed the updated credits, and entered active play without page or console errors. Evidence: `/private/tmp/pdoom-doom-death-production-proof/`.
+
+## Interactive credits and centered menus
+
+Credits now advance a native scroll viewport at 75 CSS pixels per second. Space toggles playback once per press, including while Pause, Replay, or Return has focus. Wheel, scrollbar, and scrolling keys pause the roll; resuming starts from the current reading position. Hovering still does not pause. Travis Fischer's name and its generous padding open his X profile in a new tab, and keyboard focus reveals and stabilizes the link.
+
+Five Chrome credits checks pass: two viewport/movement/replay journeys, Space and manual-scroll interruption/resume, padded-link click and keyboard navigation, and reduced-motion scrolling. The test enables native scrollbars that Headless Chrome normally hides, then clicks the track and drags the real thumb. X navigation is fulfilled locally to verify its destination without depending on the remote site's availability. Screenshots were inspected. Evidence: `/tmp/pdoom-credits-native-final/`.
+
+Title, Options, and Difficulty have explicit header, content, and footer regions. The content stack is vertically centered within the header/footer gap, including the difficulty description and Start action. Six menu checks pass across 1024 × 720, 1440 × 900, and a short 1280 × 600 window; geometry assertions place the stack midpoint within 1px of the gap midpoint. Existing keyboard, hover, confirmed-difficulty, and gameplay-entry journeys pass. Evidence: `/tmp/pdoom-menu-centering-validation/` and `/tmp/pdoom-menu-centering-short-validation/`. Formatting, lint, TypeScript, all 64 unit tests, and the production build pass.
+
+The refreshed production preview on port 3001 passed Space pause/resume, wheel interruption, author-link keyboard focus, and all three menu-center measurements. Maximum center error was 0.008px; page and console errors were empty. Evidence: `/private/tmp/pdoom-credits-menu-production-proof/`.
+
+## Grittier effects and recorded player vocals
+
+Bright pickup chimes, clean enemy chirrs, and exposed electronic sweeps were replaced with filtered and locally saturated breath, throat, electrical, and metal textures. Pickup categories and all twelve enemy awareness/attack/death profiles remain distinct. Non-shotgun weapons, impacts, explosions, doors, and the shutdown completion cue use the same material palette. The shotgun WAV, its two playback/fallback methods, the shared mix graph, and music remain unchanged.
+
+The player now uses two recorded human pain grunts (0.430 and 0.465 seconds) and a separate recorded death yell (1.471 seconds), sourced from HaelDB's CC0 takes. Pain alternates with a cooldown of at least 500 ms and cannot overlap itself. Fatal damage removes pending hurt cues, stops an active grunt, triggers one scream, and stops later enemy attacks. Audio suspension waits through the final voice and 250 ms of reflections. All four recordings load concurrently with independent failure fallback. Source WAVs, hashes, exact processing recipes, and provenance are in [the audio asset notes](../public/game/audio/README.md); HaelDB is credited in the rolling credits.
+
+All 64 unit tests, formatting, lint, TypeScript, and the production build pass. The 25 audio tests include partial load failure, first recorded playback, variant selection/cooldown, fatal override, complete tail, mute/pause/resume, bounded fallback, and cleanup. The simulation tests cover health-damage metadata, single fatal events from simultaneous hits, removal of queued pain, and suppression of attacks after fatal melee. Three credits browser checks pass with the added attribution.
+
+A normal-input Chrome run observed both pain recordings, then the full death sample ending before its AudioContext suspended, with 278 ms of additional tail time. Pause froze world/sample activity; mute/unmute controlled the master; restart closed the old context. A separate ordinary opening-weapon pickup/fire confirmed the original 0.87-second shotgun sample at normal playback rate. There were no page or console errors. Evidence: `/private/tmp/pdoom-player-recordings-browser-proof/`.
+
+Before/after 48 kHz Chrome renders covered the full effects reel, dense combat, isolated shotgun, and music. The final dense mix peaked at 0.733 with 2.70 dB headroom and no clipped or nonfinite samples. Pain peaks were 0.403/0.373; the death yell peaked at 0.473. Isolated shotgun (0.468403608 peak) and music (0.095321044 peak) measurements matched before and after. These are waveform and playback checks, not a perceptual listening review. Evidence: `/private/tmp/pdoom-grit-audition/`; [design notes](design/audio-refresh.md).
+
+The final production preview on port 3001 passed a fresh normal-input 99% run: both pain files and exactly one death file played, the 1.471-second scream completed with 310 ms before context suspension, and no page or console errors occurred. Evidence: `/private/tmp/pdoom-player-recordings-production-proof/`.
+
+## Difficulty-dependent enemy density
+
+The original 21-enemy roster remains identical at 1% and 10%. The cumulative reinforcement list adds 2 at 50%, 8 at 90%, and 36 at 99%, producing totals of 23, 29, and 57. Nightmare has twelve added creatures around staging, feedback, and early access; the rest reinforce the deeper route. All tiers retain one Sam. Every new spawn has a unique ID, flat footprint, wall/barrel/headroom clearance, and separation from doors, pickups, other actors, and the arrival position. The height-aware reachability check now includes all reinforcements.
+
+All 57 unit tests, formatting, lint, TypeScript, and the production build pass. A Chrome journey selected every difficulty through the menu and verified actual canvas rosters, selected URL/runtime difficulty, HUD totals, unique identities, one boss, base-roster identity at 1%/10%, and identical rosters after restart.
+
+A normal-input opening comparison observed two alerted/moving enemies and two attack cues at 10%, with the player alive at 82 health after nine seconds. The same short approach at 99% observed seven alerted/moving enemies, seven attack cues across all three ordinary enemy kinds, and seven to eight living enemies within 24 world units; the player died naturally after roughly four seconds. Busy 99% samples were 43–60 fps, median 60, on the reference machine, with no browser errors. These are observations of the automated approach, not a promised survival time or performance target. Both opening screenshots were inspected. Evidence: `/private/tmp/pdoom-density-opening-proof/`.
+
+The refreshed production preview on port 3001 also passed a fresh normal-UI 99% start/pause check: 57 unique enemies, one Sam, HUD 0/57, matching URL/runtime difficulty, and no page or console errors. Evidence: `/private/tmp/pdoom-density-production-smoke.json`.
+
+## Distinct enemy awareness, attack, and death audio
+
+All four enemy kinds now have three original cues apiece. Deceptive alignment uses filtered whispers and broken growls; sycophancy uses warped approval chirrs; paperclips use wire strikes and metallic clatter; Sam uses server motors, heavy relays, and a longer power-down. These replace the generic attack/death cues while retaining positional panning, distance attenuation, and room reflections.
+
+Simulation checks cover one awareness event per life from sight or surviving damage, visibility occlusion, fresh awareness after Nightmare resurrection, no awareness cue for a lethal surprise hit or multi-pellet shotgun kill, preservation of another enemy’s queued alert, one typed death event, attack release after windup, canceled volleys behind cover, missed sycophant swings, and attacks interrupted by pain or death. Audio checks cover all twelve distinct profiles, every layer's spatial routing, compressor routing, mute/pause, a 180-event overlap stress case, bounded voices, and node cleanup. All 55 unit tests, formatting, lint, TypeScript, and the production build pass.
+
+A normal-input Chrome playthrough reached Sam and the shutdown finale and observed all twelve cue signatures on running WebAudio oscillators, with no page or console errors. The observer captured 60 matched enemy cues across the full route; it did not mutate the simulation. Evidence: `/private/tmp/pdoom-enemy-audio-browser-proof/`. A final gain adjustment was measured separately in a 48 kHz offline render: the twelve-cue reel peaked at 0.219; a dense combat mix with repeated volleys, recorded shotgun, music, and a simultaneous cue/explosion stress case peaked at 0.746, retaining 2.6 dB headroom with no clipping or nonfinite samples. See [audio design and final render evidence](design/audio-refresh.md).
+
+The final production preview on port 3001 includes the completed gain mix and multi-pellet alert suppression. A fresh title → difficulty → Start → opening-weapon journey reached active play and observed enemy awareness and attack cues through running WebAudio oscillators, with no page or console errors. Evidence: `/private/tmp/pdoom-enemy-audio-browser-proof/production-opening-evidence.json`.
+
+## Faster credits, readable Controls, and distinct pickups
+
+The credit roll now moves at 75 CSS pixels per second, 2.5 times its original rate. Hover and reading focus no longer pause it; only the explicit Pause/Resume button changes playback. Reduced motion remains a static scrollable list. Trailing sentence periods and “Made to be modded” are removed, and the heading is now “No training run lasts forever.” Three Chrome checks pass, including measured upward travel while hovered, manual pause/replay, and reduced-motion scrolling. Evidence: `/tmp/pdoom-faster-credits/`.
+
+Controls is now only a centered three-column key/action guide and Return, shared by Options and the training pause menu. All explainer paragraphs and the mouse-capture note are removed. Keys render at 26–30px and actions at 22–26px across the two desktop sizes, roughly twice their previous sizes. Both full title journeys pass, including Controls from pause, native Escape, opener focus restoration, and layout bounds. Screenshots were reviewed at 1024 × 720 and 1440 × 900. Evidence: `/tmp/pdoom-controls-polish-validation/`.
+
+The 90% difficulty label reads “There’s still a chance,” and 99% reads “The swarm awaits.” All three difficulty interaction checks pass after the copy change, including the persistent selection skull and separate hover highlight. Evidence: `/tmp/pdoom-difficulty-new-labels/`.
+
+Pickup events now include an explicit item category, weapon identifier, and ammunition pool, which the existing runtime forwards to audio. Health has a restorative rustle/swell, armor a plate strike/latch, ammunition a short digital transfer, and weapons a mechanical power-up with a deeper Shutdown Button variant. Model tests verify one event per actual collection and silence when an item is rejected at full resources. Audio tests verify distinct pitch/envelope/rhythm, ammo and weapon variations, compressor routing, mute/pause, bounded overlapping voices, and cleanup. All 48 unit tests, formatting, lint, TypeScript, and the final production build pass. Eight focused UI journeys cover credits, Controls, and difficulty selection.
+
+A live Chrome pickup journey used ordinary movement to collect armor, RLHF, ammunition, and health after taking natural enemy damage. A read-only audio observer confirmed each category's distinct envelope alongside actual pickup removal; health returned to 100, play continued, and no page errors occurred. Evidence: `/private/tmp/pdoom-pickup-audio-browser-proof.json`. A 48 kHz pickup reel peaked at 0.134; the crowded mix peaked at 0.470, retaining 6.6 dB headroom with no clipping or nonfinite samples. The production preview on port 3001 serves the completed combined UI and pickup-audio build.
+
+## Confirmed difficulty, Escape toggle, and recorded shotgun correction
+
+The reported difficulty problem was reproduced twice with a visual regression: after hovering an unselected option, the original radio remained checked but its skull was hidden. The skull CSS followed focus, making hover look like selection; previous tests had checked the saved value without verifying its visible marker. The marker now follows only the confirmed difficulty. Hover/focus has a separate warm highlight, and hovering Start preserves the selected row's skull without showing a second one. Enter on a row now confirms without launching; click or Enter on Start launches the saved choice. Three difficulty checks and both full title journeys pass at 1024 × 720 and 1440 × 900. Evidence: `/tmp/pdoom-difficulty-skull-red/` and `/tmp/pdoom-difficulty-skull-green/`.
+
+Escape previously returned early when the runtime was paused. It now toggles pause/resume while ignoring repeated keydown events and respecting an open native dialog. A Controls dialog consumes its own Escape, leaving training paused until the next press. The original reproduction failed and then passed; two toggle journeys cover native and denied pointer capture, repeated presses, held-key repeats, nested Controls, and unchanged ammunition. All four existing pointer/firing regressions also pass. Evidence: `/tmp/pdoom-pause-toggle-red/` and `/tmp/pdoom-pause-toggle-green/`.
+
+The literal **PHASEONE[big]** name now fits the arrival sign proportionally. Barrel labels read **POISONED TRAINING DATA / DO NOT USE**, the ammunition pickup says **MORE POSTTRAINING RL. SURELY THIS WILL HELP**, and the deep sign reads **IT'S ONLY AN INTERNAL EVAL / WHAT COULD GO WRONG**. These edits do not alter combat, ammunition pools, or collision geometry.
+
+The ordinary RLHF shot now uses a locally bundled recording of a shotgun blast and pump. Offline decoding keeps preload silent and makes the sample available for the first shot; failures retain synthesis as a fallback. Fifteen audio tests cover first-shot buffer use, download/status/decode failures, retry, voice limits, pause and disposal. Two additional live Chrome runs acquired RLHF through ordinary movement and observed actual source playback: the first shot used one non-looping 0.87-second recording; blocking only its WAV request produced synthesized fallback with the same ammunition consumption. Neither run had page errors. Evidence: `/private/tmp/pdoom-recorded-shotgun-browser-proof.json`. The final recorded mix has 3.8 dB peak headroom in the crowded render with no clipping. [Sources, processing, and render measurements](design/audio-refresh.md).
+
+Eighteen focused Chrome journeys pass for this correction: five difficulty/title, six Escape/pointer, four slow-loading/cancellation/combat/retry, and three credits checks after adding recording credits. Evidence also includes `/tmp/pdoom-recorded-shotgun-entry/` and `/tmp/pdoom-recording-credits/`. Formatting, lint, TypeScript, all 45 unit tests, and the production build pass. The final production preview on port 3001 was checked for difficulty confirmation without launching, explicit Start, and Escape pause/resume. Older full-route and performance measurements below remain from the preceding gameplay pass.
+
+## Direct entry, menu interaction, credits, and shotgun revision
+
+**Start Training Run** now goes from difficulty selection through loading directly into gameplay. The extra briefing/entry screen is removed. Hover and arrow navigation preview a difficulty without changing the committed choice, with the same mechanical move cue as the title menu. Click or Space selects; Enter confirms and launches the focused choice. Starting with the button uses the committed setting, even if another option was hovered last. Assets have a single owner as they transfer from preload to a runtime, and a cancelled launch cannot replace a later run. A backgrounded launch stays paused.
+
+Twenty Chrome journeys pass across the final focused runs: seven gameplay/lifecycle checks, four pointer-lock regressions, two complete title/HUD/pause journeys, two difficulty-selection checks, three credits checks, and two slow-loading/cancellation checks. The slow-loading check holds an atlas request for six seconds and confirms direct play, unchanged ammunition, keyboard movement, and pause. Credits move upward at a measured 30 CSS pixels/second, support pause/replay/hover/focus, and become static scrollable content under reduced motion. Their viewport and fixed controls fit 1024 × 720 and 1440 × 900. Two old test assumptions were updated for the new flow: fullscreen controls require releasing the captured mouse, and reload preserves the difficulty confirmed with Enter. Final evidence is under `/tmp/pdoom-menu-final-validation/`, `/tmp/pdoom-direct-entry-validation/`, `/tmp/pdoom-slow-entry-validation/`, and `/tmp/pdoom-credits-validation/`.
+
+The RLHF report adds a dry crack, held saturated body, descending bass, and separated pump clacks while preserving “Human feedback. At close range.” Isolated Chrome offline renders peak at 0.555 for the shotgun and 0.603 for a dense combat mix, with no clipping or nonfinite samples. The first 60ms RMS is roughly twice the former report; the body is roughly 3.1 times and pump 1.7 times the previous RMS. These are signal measurements, not a claim of perceptual listening. See [audio design and render evidence](design/audio-refresh.md).
+
+A worn two-line **PHASEONE / was here** sign is visible from the arrival platform without changing collision or encounter geometry. Live visual checks cover the sign, upward credits, direct entry, and pause. The refreshed production build is served locally on port 3001; its menu-to-level and pause flow was checked in the in-app browser. Formatting, lint, TypeScript, all 42 unit tests, and the production build pass. The full-route completion/performance evidence below remains from the prior gameplay pass; this revision does not change simulation or level geometry.
+
+The gameplay fidelity pass completed twelve Chrome browser tests with no uncaught browser errors: eight gameplay journeys and the four mouse-capture regressions below. The barrel and complete-route journeys were rerun successfully after the final projectile effects and sprite-mask changes. They exercise the following using normal keyboard/mouse controls and read-only DOM diagnostics:
+
+1. Direct navigation, invalid difficulty fallback, selection, query persistence, and reload.
+2. A real enemy kill, ammunition use, RLHF pickup, and physical door passage.
+3. Automap, pause freeze, mute, resume, repeated restarts, and return to menu.
+4. A deliberately failed asset request followed by successful retry.
+5. Enemy-caused death and replay.
+6. Browser fullscreen.
+7. Full main route, all four weapons, Sam, charging feedback, shutdown, and victory.
+8. Shooting volatile data barrels, chain explosions, persistent destruction, and walking through their former position.
+
+The full-route automated player uses the default 10% setting and does not teleport or mutate the game world. The final run completed in 134.3 seconds, acquired all four weapons, defeated Sam, climbed to the shutdown platform at a floor height of 2.7, and reached victory. Completion time demonstrates reachability, not the expected duration of a first-time human playthrough. Browser traces, arrival/lower-chamber/computer-room/courtyard/creature/boss/victory screenshots, and route/performance evidence are written to the ignored `test-results/` directory.
+
+During that run, 46 samples taken about one second apart while a visible threat was present measured 43–60 fps, with a median of 60 fps. These are the runtime’s rolling frame-rate diagnostics in the automated Chrome environment, not a GPU benchmark or a promise for other hardware.
+
+## Console title and menu revision
+
+The later title revision replaces the CSS wordmark and landing-page layout with a new transparent stone logo, generated skull cursor, 22px beveled bitmap lettering, a centered 4:3 composition, and dark clouds/embers. Title, difficulty, options, controls, and credits use the new presentation. The original premise text moves into the entry briefing. Logo and cursor display variants use Next.js image optimization; the original generated PNGs remain unchanged. [References and font license](design/title-menu-reference.md) · [Final ImageGen prompts and asset provenance](design/title-art.md).
+
+Ten focused Chrome checks pass for this revision: two complete menu journeys at 1024 × 720 and 1440 × 900, direct navigation/difficulty persistence, pause/map/restarts, loading retry, gameplay fullscreen, and all four mouse-capture regressions. The two menu journeys and fullscreen check each passed three consecutive final runs. They verify actual logo decoding, font loading and visible bitmap pixels, arrows/Enter/Escape, sound/fullscreen options, return focus after dialogs, navigation from Back, difficulty-to-URL-to-runtime state, and entering without firing. Geometry checks and screenshots confirm that the title, difficulty, options, controls, credits, and game-entry briefing fit both viewports without clipping or page overflow. Console and page errors were empty.
+
+The menu focus review fixed two issues: dialog return now preserves its opener, and Arrow Up from the Back control reaches the last menu item. Browser checks wait for the dialog DOM node to be removed, since native Escape hides the dialog before dispatching its queued close event. The production build, lint, and TypeScript checks pass. This presentation revision leaves simulation and level files unchanged; the full-route gameplay evidence above remains from the preceding fidelity pass.
+
+## Training, readability, likeness, and audio revision
+
+The latest pass increases walk speed from 6.2 to 7.4 units/second and run speed from 8.5 to 10.2, while increasing braking response to preserve a short stopping distance. The same frame-rate-independent integration, collision, and height tests pass. Pickups now have a large featured title and punchline, with weapon discoveries taking priority; a bounded queue gives interrupted pickup jokes reading time. A separate two-entry lane names vanquished enemies, so a kill cannot erase a weapon or health announcement. The largest weapon is named in full in both its discovery banner and HUD. Notification tests cover independent expiry, interruption/resumption, bounded bursts, invalid/large elapsed time, copied snapshots, and integration with actual collected pickups and kills.
+
+The user-directed console style now covers the HUD, briefing, pause, death, error, and victory screens. Menus use training terminology, with the explicit objective to find the red lab switch and shut down AI training. Sam still gates the switch. The fixed switch is an enlarged red industrial button with a metal collar, clear “Stop AI Training” sign, and pressed appearance after victory. It is marked on the discovered automap. Gameplay notices are hidden while an overlay is open.
+
+New six-pose paperclip and Sam sheets and four researcher worry portraits improve silhouette and likeness. Paperclip loops have real alpha openings. Sam uses per-frame rectangle masks to remove neighboring-pose fragments without modifying the generated source PNG. Atlas UVs use actual image dimensions. See [artwork, final ImageGen prompts, and alpha/crop QA](design/character-readability-art.md).
+
+An original industrial score now accompanies title and gameplay, with distinct mechanical move/confirm/back menu cues. Menu music suspends during active play, while game music uses the existing pause/visibility lifecycle; mute controls both. Twelve audio unit tests and isolated Chrome offline renders verify output, no clipping, bounded voices, no autoplay before interaction, and cleanup. See [audio design and render evidence](design/audio-refresh.md).
+
+Fourteen Chrome journeys pass: the twelve gameplay/pointer-lock journeys plus complete menu/briefing/HUD/pause journeys at 1024 × 720 and 1440 × 900. Pause initially selects Resume even if the restored mouse happens to be over Restart; Controls returns focus correctly; keyboard resume does not fire. Gameplay checks explicitly verify visible discovery and kill notices. The complete 10% run reached victory in 115.3 seconds, saw all three acquired-weapon announcements and vanquished notices for all four enemy kinds, and recorded no console errors or warnings. Forty-seven busy-encounter samples measured 46–60 fps, median 60, on the reference machine. Timing and FPS remain test-run observations, not first-time-player or hardware promises. Evidence and screenshots are under `/tmp/pdoom-training-validation/` and `/tmp/pdoom-hud-final-check/`.
+
+## Earlier Doom 64 refinement
+
+The user-directed revision replaces the earlier square-room/E1M1 direction with an authored interpretation of Doom 64's Staging Area. The starting platform overlooks a lower chamber with a 1.5-unit drop, a return stair flight, roof apertures, and visible onward doors. The full route includes a bent access hall, computer room, elevated gallery, open-sky courtyard, northern service passages, and a raised shutdown gallery beyond the boss. Height-aware connectivity checks cover every entity and route waypoint.
+
+Visual review covered the initial view and the full-route screenshots. Per-sector colors, different ceiling heights, dark rust/concrete textures, violet cloud sky, lamp pools, metal stair edges, a smaller ivory HUD, sprite shadows, impact particles, weapon bob, and muzzle lighting support the new direction. Floor/wall corner lighting uses the owning sector so neighboring colors do not bleed across seams. Original ambient drones, air noise, distant metallic tones, enemy cues, and landing/weapon effects replace the previous energetic music loop. [Reference notes and new asset provenance](research/doom64-staging-area.md).
+
+After the full-route run, the final pickup-art and HUD-spacing polish was checked in production at 1024 × 720 and 1440 × 900. The RLHF pickup remains visible beside the held weapon; all HUD labels, details, and ammunition rows fit without page overflow or clipping. The production renderer starts, plays, and pauses without Three.js warnings or JavaScript exceptions. A missing browser icon was also supplied and verified to return HTTP 200.
+
+## Playability adjustments
+
+The subsequent fidelity pass adds six-pose enemy animation, paired volatile data barrels in five areas, working eval monitors, turning fans, vent steam, overhead cables, wall pipes, door status lamps, and persistent impact/wreckage details. Atlas frames use measured alpha rectangles and stable visual anchors; the paperclip is anchored by its eye. [Animation asset provenance](design/polish-art.md).
+
+Visual review of the final route covered all three risk silhouettes and defeated poses, Sam's walking and powered-down suit, and the refreshed computer-room/courtyard views. A neighboring sprite fragment was removed from the paperclip release via a frame-specific shader mask. Locomotion poses now require actual displacement, avoiding marching in place. Final barrel captures show a bright expanding core, debris, and a fading plume; hostile shots and plasma have distinct colored cores and halos. The complete final route recorded no console errors, including shader errors.
+
+The revised sound graph keeps weapon transients centered, positions world cues by angle and distance, adds quiet damped stereo room reflections, and crossfades existing machinery/air beds between indoor sectors and the courtyard. It caps transient voices and disconnects ended nodes. A real Chromium OfflineAudioContext render of a 32-second effects sequence peaked at 0.416 (−7.6 dBFS), with no clipped samples and distinct left/right explosion energy. This verifies signal output and headroom; it is not a claim of subjective listening validation.
+
+The first three weapon identities and all three risk silhouettes appear on the opening route. Guardrails, Touch Grass, and Training Data are placed nearby. Later areas contain the Shutdown Button, optional secrets, and the required boss finale.
+
+On 1% and 10%, enemies allow six seconds of arrival time before becoming aware; the first paid shot ends that grace immediately. There is no invisible invulnerability. Higher difficulties begin immediately.
+
+The Shutdown Button has an immediate rising sound, glowing weapon, and charge progress before its projectile launches. Death/victory stops music while allowing the final effect to decay. Restarts release input listeners, frame loops, audio, scene resources, and the WebGL context.
+
+## Mouse-capture regression
+
+A follow-up fixed firing that could remain latched if mouse capture swallowed a release event. Mouse firing is suspended while a capture request is pending, capture changes clear the held trigger, and button-state updates recover a missed release. A rejected capture request still allows the mouse fallback.
+
+Four focused Chrome browser regressions pass after the Doom 64 revision: entry/resume without firing, normal held fire and release, a held capture gesture without ammunition consumption, and recovery from an injected lost release. The suite also covers permanently denied capture with working hold-to-fire and release. Run `pnpm e2e tests/pointer-lock.spec.ts` for this focused check.
+
+## Deliberate limits
+
+This is an authored Doom 64-inspired shooter, with approximate movement/combat and a Staging Area-inspired layout. It is not an exact reconstruction of Doom 64 behavior or map data. Geometry is authored on a grid, so chamfered outlines have stepped corners. The enemy sprites have six animation poses with hit tint, rather than eight directional views. Audio is originally synthesized.
+
+The 60 fps target is a reference-machine target, not a guarantee for every desktop. Further human playtesting can refine difficulty, encounter pacing, and the finer points of weapon feel. No Bloom, mobile, multiplayer, accounts, saved progression, or live AI calls are included.

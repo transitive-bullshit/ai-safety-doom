@@ -1,0 +1,144 @@
+.death-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.death-blood,
+.death-blood-columns,
+.death-blood-shadow,
+.death-menu {
+  position: absolute;
+  inset: 0;
+}
+
+.death-blood {
+  pointer-events: none;
+}
+
+.death-blood-columns {
+  overflow: hidden;
+}
+
+.death-blood-column {
+  position: absolute;
+  top: 0;
+  height: 128%;
+  /* Static grain travels with the blood; there is no animated noise filter. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Cfilter id='grit'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.075 .22' numOctaves='3' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 -2.1'/%3E%3C/filter%3E%3Cpath fill='%23000000' opacity='.64' filter='url(%23grit)' d='M0 0h192v192H0z'/%3E%3C/svg%3E")
+      var(--blood-grain-offset) 0 / 192px 192px,
+    radial-gradient(ellipse at 23% 37%, #190003b3, transparent 37%),
+    radial-gradient(ellipse at 78% 69%, #240002c9, transparent 31%),
+    radial-gradient(ellipse at 39% 93%, #c63a2240, transparent 24%),
+    repeating-linear-gradient(0deg, #16000022 0 2px, transparent 2px 5px),
+    linear-gradient(#390205, #71080b 53%, #920e10 88%, #aa2318);
+  /* Blunt lobes and wide notches replace the old needle-like drips.
+     Even the shallowest edge covers the frame when the sheet settles. */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 86%,
+    94% 86%,
+    94% 90%,
+    86% 90%,
+    86% 96%,
+    76% 96%,
+    76% 98%,
+    52% 98%,
+    52% 100%,
+    23% 100%,
+    23% 97%,
+    13% 97%,
+    13% 92%,
+    5% 92%,
+    5% 87%,
+    0 87%
+  );
+  transform: translateY(-100%);
+  animation: death-blood-fall var(--blood-duration)
+    cubic-bezier(0.77, 0, 0.175, 1) var(--blood-delay) both;
+}
+
+.death-blood-column:nth-child(3n) {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 88%,
+    91% 88%,
+    91% 94%,
+    80% 94%,
+    80% 99%,
+    55% 99%,
+    55% 96%,
+    43% 96%,
+    43% 100%,
+    18% 100%,
+    18% 96%,
+    8% 96%,
+    8% 90%,
+    0 90%
+  );
+}
+
+.death-blood-column:nth-child(3n + 2) {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 85%,
+    93% 85%,
+    93% 91%,
+    82% 91%,
+    82% 98%,
+    68% 98%,
+    68% 100%,
+    36% 100%,
+    36% 97%,
+    23% 97%,
+    23% 99%,
+    9% 99%,
+    9% 93%,
+    0 93%
+  );
+}
+
+.death-blood-shadow {
+  background:
+    repeating-linear-gradient(transparent 0 3px, #0003 3px 5px),
+    radial-gradient(ellipse at 50% 42%, #140205c9, #060104eb);
+  opacity: 0;
+  animation: death-blood-darken var(--death-reveal-time) linear both;
+}
+
+.death-transition .game-overlay {
+  background: transparent;
+}
+
+@keyframes death-blood-fall {
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes death-blood-darken {
+  0%,
+  65% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .death-blood-column {
+    animation: none;
+    transform: none;
+  }
+  .death-blood-shadow {
+    animation: none;
+    opacity: 1;
+  }
+}

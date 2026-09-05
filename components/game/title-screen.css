@@ -1,0 +1,404 @@
+@font-face {
+  font-family: 'Console Display';
+  src: url('/fonts/goldman-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.game-shell.menu-active {
+  min-height: 0;
+  padding: 0;
+  background: #030303;
+}
+.menu-active .shell-header,
+.menu-active .shell-footer,
+.menu-active .game-frame::before,
+.menu-active .game-frame::after {
+  display: none;
+}
+.menu-active .game-frame {
+  border: 0;
+  box-shadow: none;
+  background: #030303;
+}
+.console-screen {
+  position: relative;
+  height: 100%;
+  isolation: isolate;
+  overflow: hidden;
+  background: #050405;
+}
+.console-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(transparent 0 2px, #0002 2px 3px);
+  box-shadow: inset 0 0 100px #000;
+  z-index: 3;
+}
+.console-atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at 50% 70%,
+    #211518 0,
+    #070608 50%,
+    #010102 85%
+  );
+}
+.console-clouds {
+  position: absolute;
+  inset: -10%;
+  background: url('/game/d64-sky.png') center / cover;
+  filter: grayscale(0.7) sepia(0.25) brightness(0.35);
+  opacity: 0.36;
+  animation: console-cloud-drift 48s linear alternate infinite;
+}
+.console-atmosphere canvas {
+  position: absolute;
+  width: 100%;
+  height: 49%;
+  bottom: 0;
+  opacity: 0.29;
+  image-rendering: pixelated;
+  mix-blend-mode: screen;
+  mask-image: linear-gradient(transparent, #000 55%);
+}
+@keyframes console-cloud-drift {
+  from {
+    transform: translateX(-3%);
+  }
+  to {
+    transform: translateX(3%);
+  }
+}
+.console-safe-area {
+  container-type: inline-size;
+  width: min(100%, 133.333dvh);
+  height: 100%;
+  margin: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4.5dvh 4% 4dvh;
+  text-align: center;
+}
+.console-page-header,
+.console-page-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+}
+.console-page-content {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding-block: 2dvh;
+}
+.console-content-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.console-logo {
+  margin: 0;
+  width: 94%;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 2px #000);
+}
+.console-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+.console-subtitle,
+.console-tagline,
+.console-instructions,
+.console-edition,
+.console-difficulty-description {
+  font-family: 'Console Display', sans-serif;
+  font-weight: 700;
+  text-shadow: 1px 2px #000;
+}
+.console-subtitle {
+  margin: 1.3dvh 0 0;
+  font-size: clamp(11px, 1.55cqw, 17px);
+  letter-spacing: 4px;
+  color: #827775;
+}
+.console-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4dvh;
+  width: 100%;
+  margin-top: 0;
+}
+.console-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 5.5dvh;
+  padding: 0 4cqw;
+  border: 0;
+  background: none;
+  font-size: clamp(25px, 3.8cqw, 44px);
+  line-height: 1;
+}
+.console-item:focus-visible,
+.console-item:hover {
+  outline: none;
+}
+.console-text {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  vertical-align: middle;
+}
+.console-text canvas {
+  display: none;
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  filter: brightness(0.96);
+}
+.console-text[data-ready='true'] canvas {
+  display: block;
+}
+.console-text[data-ready='true'] .console-text-fallback {
+  display: none;
+}
+.console-text-fallback {
+  font:
+    700 1em 'Console Display',
+    sans-serif;
+  color: #b3523c;
+  text-shadow: 2px 3px #260e0b;
+}
+.console-item:focus .console-text canvas {
+  filter: brightness(1.48) drop-shadow(0 0 5px #b4311a38);
+}
+.console-skull {
+  position: absolute;
+  left: 0;
+  width: 1.3em;
+  height: 1.3em;
+  object-fit: contain;
+  image-rendering: pixelated;
+  visibility: hidden;
+  pointer-events: none;
+}
+.console-item:focus .console-skull,
+.console-difficulty[data-selected='true'] .console-skull {
+  visibility: visible;
+}
+.console-tagline {
+  color: #817472;
+  font-size: clamp(9px, 1.22cqw, 14px);
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.console-instructions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3cqw;
+  color: #847d78;
+  font-size: clamp(9px, 1.15cqw, 13px);
+  margin-top: 0;
+}
+.console-screen[data-menu-page='title'] .console-instructions {
+  margin-top: 3.4dvh;
+}
+.console-instructions button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.console-instructions button:hover {
+  color: #ce9f80;
+}
+.console-edition {
+  margin-top: 1.8dvh;
+  font-size: clamp(8px, 0.95cqw, 11px);
+  letter-spacing: 1.5px;
+  color: #514744;
+}
+.console-edition span {
+  margin-left: 12px;
+}
+.console-heading {
+  margin: 1.6dvh 0 0;
+  font-size: clamp(19px, 2.65cqw, 30px);
+  line-height: 1;
+}
+.console-screen[data-menu-page='difficulty'] .console-logo,
+.console-screen[data-menu-page='options'] .console-logo {
+  width: 62%;
+}
+.console-difficulties {
+  width: 78%;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45dvh;
+}
+.console-difficulty {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7cqw 1fr;
+  align-items: center;
+  gap: 1.6cqw;
+  padding: 0 0 0 4cqw;
+  min-height: 5.4dvh;
+  text-align: left;
+  font-size: clamp(19px, 2.65cqw, 29px);
+  cursor: pointer;
+}
+.console-difficulty input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.console-difficulty:focus-within {
+  outline: none;
+  background: linear-gradient(90deg, #b362241c, #bb5e1811 75%, transparent);
+  box-shadow: inset 2px 0 #c88649;
+}
+.console-difficulty[data-selected='true'] .console-text canvas {
+  filter: brightness(1.35);
+}
+.console-difficulty:focus-within .console-text canvas,
+.console-screen[data-menu-page='difficulty']
+  .console-item:focus
+  .console-text
+  canvas {
+  filter: brightness(1.9) saturate(0.6) drop-shadow(0 0 7px #e4913948);
+}
+.console-difficulty:focus-within .console-text-fallback,
+.console-screen[data-menu-page='difficulty']
+  .console-item:focus
+  .console-text-fallback {
+  color: #f4c48d;
+}
+.console-screen[data-menu-page='difficulty'] .console-item:focus {
+  background: radial-gradient(ellipse, #ba692223, transparent 72%);
+}
+.console-screen[data-menu-page='difficulty'] .console-instructions button:focus,
+.console-screen[data-menu-page='difficulty']
+  .console-instructions
+  button:hover {
+  color: #f4c48d;
+  text-shadow: 0 0 8px #e4913966;
+  outline: none;
+}
+.console-difficulty .console-text {
+  pointer-events: none;
+}
+.console-difficulty .console-skull {
+  font-size: 1.2em;
+}
+.console-probability {
+  display: flex;
+  justify-content: flex-end;
+}
+.console-difficulty-description {
+  margin: 1.2dvh 0 0;
+  color: #969087;
+  font-size: clamp(10px, 1.25cqw, 14px);
+  min-height: 3dvh;
+}
+.console-start {
+  margin-top: 1dvh;
+}
+.console-start .console-item {
+  font-size: clamp(20px, 2.65cqw, 30px);
+}
+.console-options {
+  gap: 1.1dvh;
+}
+.console-options .console-item {
+  font-size: clamp(22px, 3.2cqw, 36px);
+}
+.field-manual.console-manual {
+  width: 1120px;
+  max-width: calc(100% - 64px);
+  max-height: calc(100dvh - 40px);
+  padding: 32px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-family: 'Console Display', sans-serif;
+  text-align: center;
+}
+.console-manual::backdrop {
+  background: #050405;
+  backdrop-filter: none;
+}
+.console-manual h2 {
+  margin: 0 0 5dvh;
+  font-size: clamp(36px, 5dvh, 48px);
+  outline: none;
+}
+.console-manual .control-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  text-align: center;
+  border: 0;
+  padding: 0;
+  margin: 0 0 5dvh;
+  gap: 5dvh 32px;
+}
+.console-manual .control-row kbd {
+  font-family: 'Console Display', sans-serif;
+  color: #e3aa78;
+  font-size: clamp(26px, 3.35dvh, 30px);
+  line-height: 1.25;
+  letter-spacing: 1px;
+  text-shadow: 2px 3px #250e0b;
+}
+.console-manual .control-row {
+  color: #b5a48f;
+  font-size: clamp(22px, 2.9dvh, 26px);
+  line-height: 1.35;
+  text-transform: uppercase;
+  text-shadow: 1px 2px #000;
+  gap: 10px;
+}
+.console-manual .manual-return {
+  margin: 0 auto;
+  font-size: clamp(29px, 4dvh, 36px);
+  min-height: 48px;
+}
+@media (max-width: 900px) {
+  .console-manual .control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .console-clouds {
+    animation: none;
+  }
+}

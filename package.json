@@ -1,8 +1,8 @@
 {
-  "name": "TODO",
+  "name": "ai-safety-doom",
   "version": "0.0.0",
   "private": true,
-  "description": "TODO",
+  "description": "P(DOOM): a playable AI-safety shooter parody in a breached frontier lab",
   "license": "MIT",
   "author": "Travis Fischer <travis@transitivebullsh.it>",
   "repository": "https://github.com/transitive-bullshit/ai-safety-doom",
@@ -16,6 +16,8 @@
     "test:format": "oxfmt --check",
     "test:lint": "oxlint",
     "test:types": "next typegen && tsc --noEmit",
+    "test:unit": "node --import tsx --test tests/*.test.ts",
+    "e2e": "playwright test",
     "typecheck": "pnpm test:types",
     "fix": "run-s fix:*",
     "fix:format": "oxfmt",
@@ -29,14 +31,17 @@
     "next": "^16.3.4",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@fisch0920/config": "^2.1.4",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "@types/three": "^0.185.4",
     "lint-staged": "^17.4.1",
     "npm-run-all2": "^9.0.3",
     "oxfmt": "^0.66.0",

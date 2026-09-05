@@ -1,0 +1,44 @@
+.console-social-links {
+  position: absolute;
+  right: clamp(20px, 3dvw, 44px);
+  bottom: clamp(18px, 3dvh, 28px);
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+.console-social-link {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  color: #a8513c;
+  background: radial-gradient(ellipse at 50% 10%, #4d292322, #09060666);
+  border: 1px solid #643c2c4d;
+  box-shadow:
+    inset 0 1px #bb795519,
+    inset 0 -2px #170b08,
+    0 2px 2px #0008;
+}
+.console-social-link svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  filter: drop-shadow(0 -1px 0 #e58d6155) drop-shadow(1px 2px 0 #230b08);
+}
+.console-social-link:hover,
+.console-social-link:focus {
+  color: #f0b783;
+  border-color: #b77747;
+  background: #a354241a;
+  box-shadow:
+    inset 0 1px #efc39333,
+    inset 0 -2px #5b2c1f,
+    0 0 12px #b4311a30;
+  outline: none;
+}
+.console-social-link:active {
+  color: #ffe2b9;
+  box-shadow: inset 0 1px 4px #000;
+}

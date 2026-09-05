@@ -1,0 +1,487 @@
+/* One console language from title screen to final shutdown. */
+.game-shell.session-active {
+  padding: 0;
+  background: #050405;
+  font-family: 'Console Display', sans-serif;
+}
+.session-active .shell-header,
+.session-active .game-frame::before,
+.session-active .game-frame::after {
+  display: none;
+}
+.session-active .game-frame {
+  border: 0;
+  box-shadow: none;
+}
+.session-active .shell-footer {
+  height: 30px;
+  padding: 0 22px;
+  background: #070607;
+  border-top: 1px solid #302729;
+  color: #8b7e77;
+  font-size: 9px;
+  letter-spacing: 0.4px;
+}
+.session-active .utility-controls button {
+  font-size: 9px;
+  color: #9c8a7e;
+  padding: 3px 0;
+}
+.session-active .footer-context > span:last-child {
+  font-size: 9px;
+}
+.session-active .ingame-heading {
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  gap: 24px;
+  font-size: 13px;
+  color: #b7aaa0;
+  letter-spacing: 0.6px;
+  text-shadow:
+    2px 2px #080406,
+    0 0 8px #000;
+}
+.session-active .ingame-heading > span:first-child {
+  color: #bb8c71;
+}
+.session-active .objective {
+  font-size: 12px;
+  color: #b9b0a3;
+  max-width: 54%;
+}
+.session-active .hud-wrap {
+  z-index: 6;
+  background: #100c0e;
+  color: #b99b89;
+}
+.session-active .hud-readout {
+  min-height: 30px;
+  padding: 5px 24px;
+  gap: 20px;
+  background: linear-gradient(#21191b, #110d0f);
+  border-top: 2px solid #6e4b41;
+  border-bottom: 1px solid #080506;
+  font-size: 13px;
+  letter-spacing: 0.6px;
+}
+.session-active .hud-readout > span {
+  color: #d19b7c;
+  text-shadow: 1px 2px #000;
+}
+.session-active .run-counters {
+  color: #897b75;
+  font-size: 10px;
+  gap: 26px;
+}
+.session-active .run-counters b {
+  color: #c0a393;
+}
+.session-active .status-bar {
+  grid-template-columns: 1.1fr 1.1fr 0.8fr 112px 1.2fr 1.4fr;
+  height: 108px;
+  padding: 4px 24px 6px;
+  border-top: 1px solid #514143;
+  background:
+    linear-gradient(#1b1419d9, #110d11d9),
+    url('/game/d64-wall.png') center / 320px 320px;
+  box-shadow:
+    inset 0 3px #080507,
+    inset 0 -2px #443036;
+}
+.session-active .status-cell {
+  padding: 3px 10px;
+  border: 0;
+  box-shadow: none;
+}
+.session-active .status-number {
+  font-family: 'Console Display', sans-serif;
+  color: #b35741;
+  -webkit-text-stroke: 0;
+  font-size: 48px;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  text-shadow:
+    0 -1px #e0996b,
+    1px 2px #653124,
+    3px 4px #050305;
+}
+.session-active .status-number small {
+  font-size: 28px;
+  margin-left: 2px;
+}
+.session-active .status-number.critical {
+  color: #ed795e;
+}
+.session-active .status-label {
+  font-family: 'Console Display', sans-serif;
+  font-weight: 700;
+  color: #ba9786;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  margin-top: 5px;
+  text-shadow: 1px 2px #050305;
+}
+.session-active .status-detail {
+  color: #84736b;
+  font-size: 8px;
+  letter-spacing: 0.3px;
+  margin-top: 3px;
+}
+.session-active .arsenal-keys {
+  font-size: 23px;
+  gap: 4px 17px;
+  color: #433333;
+  text-shadow: 1px 2px #050305;
+}
+.session-active .arsenal-keys .owned {
+  color: #8e6658;
+}
+.session-active .arsenal-keys .selected {
+  color: #e3a883;
+}
+.session-active .portrait-frame {
+  margin: 0 7px;
+  border: 2px solid #443032;
+  border-top-color: #0a0609;
+  border-left-color: #0a0609;
+  background: #080508;
+  box-shadow: 0 1px #805c4c;
+}
+.session-active .data-cell {
+  gap: 8px;
+  padding-left: 24px;
+}
+.session-active .data-cell > div {
+  line-height: 1.1;
+  font-size: 11px;
+  color: #927d71;
+}
+.session-active .data-cell b {
+  color: #be8c72;
+  font-size: 16px;
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.session-active .game-overlay {
+  padding: 22px;
+  background: radial-gradient(ellipse at center, #100b10e8, #050306f2);
+  backdrop-filter: none;
+}
+.session-active:not([data-phase='playing'])
+  :is(
+    .ingame-heading,
+    .action-notices,
+    .game-messages,
+    .boss-meter,
+    .interact-prompt,
+    .crosshair,
+    .charge-indicator
+  ) {
+  visibility: hidden;
+}
+.session-active .console-overlay-panel {
+  width: min(840px, 100%);
+  max-height: 100%;
+  padding: 14px 28px;
+  align-items: center;
+  text-align: center;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  container-type: inline-size;
+}
+.session-active .console-overlay-panel h2 {
+  margin: 14px 0 18px;
+  max-width: 100%;
+  font-size: clamp(28px, 4.8cqw, 42px);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+.session-active .console-overlay-panel .eyebrow {
+  font-family: 'Console Display', sans-serif;
+  font-size: 11px;
+  color: #8d7269;
+  letter-spacing: 1.2px;
+}
+.session-active .console-overlay-panel p {
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #ab9b91;
+  margin: 0 0 16px;
+}
+.session-active .console-overlay-panel .briefing-story {
+  max-width: 94%;
+}
+.briefing-objective {
+  margin: 4px 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.briefing-objective > span {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #a06d55;
+}
+.briefing-objective strong {
+  color: #d6a58a;
+  font-size: 20px;
+  line-height: 1.35;
+  text-shadow: 2px 2px #1b0c0c;
+}
+.session-active .briefing-objective p {
+  margin: 0;
+  font-size: 12px;
+  color: #a78e80;
+}
+.session-active .quick-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 24px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 14px;
+  font-size: 10px;
+  color: #837770;
+}
+.session-active .quick-controls kbd {
+  font-family: inherit;
+  color: #b89782;
+}
+.session-active .console-session-action {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 45px;
+  font-size: clamp(22px, 3.8cqw, 32px);
+}
+.session-active .console-session-action:active {
+  transform: translateY(1px);
+}
+.console-session-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+}
+.session-active .console-overlay-panel .prior-note {
+  color: #76655e;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  margin-top: 12px;
+}
+.session-active .console-overlay-panel .pause-objective {
+  color: #907b6e;
+  margin-bottom: 20px;
+  font-size: 12px;
+}
+.session-active .console-overlay-panel .victory-payoff {
+  color: #c7af9c;
+  font-size: 25px;
+}
+.session-active .run-result {
+  width: 82%;
+  border: 0;
+  gap: 24px;
+  padding: 15px 0 24px;
+  margin: 0 0 7px;
+}
+.session-active .run-result span {
+  font-size: 10px;
+  color: #90796b;
+}
+.session-active .run-result strong {
+  color: #c49d86;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.session-active .loading-track {
+  width: 55%;
+  height: 4px;
+  background: #2b1b1c;
+}
+.session-active .loading-track > span {
+  background: #a1533c;
+}
+.action-notices {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  font-family: 'Console Display', sans-serif;
+  text-shadow:
+    2px 2px #160906,
+    0 0 12px #000;
+}
+.featured-notice {
+  position: absolute;
+  top: 14%;
+  left: 16%;
+  width: 68%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 8px 14px 12px;
+  background: radial-gradient(ellipse, #0b060bbe, #0b060b00 72%);
+}
+.notice-category {
+  color: #a78063;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.featured-notice strong {
+  color: #e8bb86;
+  font-size: clamp(21px, 2.3vw, 34px);
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+.notice-punchline {
+  color: #ddc4ac;
+  font-size: clamp(17px, 1.7vw, 25px);
+  line-height: 1.3;
+}
+.featured-notice[data-notice-kind='weapon'] strong {
+  color: #ec8b69;
+}
+.vanquished-feed {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  width: min(42%, 570px);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+.vanquished-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vanquished-notice strong {
+  font-size: clamp(15px, 1.5vw, 21px);
+  line-height: 1.25;
+  color: #ce8c71;
+}
+.vanquished-notice > span {
+  font-size: clamp(12px, 1.1vw, 16px);
+  color: #ad9986;
+  line-height: 1.3;
+}
+.session-active .game-messages {
+  left: auto;
+  right: 24px;
+  bottom: 24px;
+  max-width: 31%;
+  text-align: right;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #bda793;
+}
+.session-active .interact-prompt {
+  bottom: 82px;
+  padding: 7px 18px;
+  max-width: 65%;
+  border: 0;
+  background: #100b10c9;
+  color: #d6b79b;
+  font-size: 16px;
+  line-height: 1.4;
+  text-shadow: 2px 2px #050305;
+}
+.session-active .interact-prompt kbd {
+  font-family: inherit;
+  color: #ee9e75;
+}
+.session-active .boss-meter {
+  top: 57px;
+  width: min(44%, 620px);
+}
+.session-active .boss-meter > div {
+  font-size: 11px;
+  color: #b79d8d;
+}
+.session-active .boss-meter b {
+  color: #ed9873;
+}
+.session-active .boss-meter progress {
+  height: 9px;
+  border: 1px solid #784332;
+}
+.session-active .charge-indicator {
+  font-family: 'Console Display', sans-serif;
+  font-size: 13px;
+  color: #ef9b70;
+}
+@media (max-height: 790px) {
+  .session-active .status-bar {
+    height: 96px;
+    grid-template-columns: 1.1fr 1.1fr 0.8fr 100px 1.2fr 1.4fr;
+  }
+  .session-active .status-number {
+    font-size: 43px;
+  }
+  .session-active .status-label {
+    font-size: 12px;
+  }
+  .session-active .console-overlay-panel {
+    padding-block: 5px;
+  }
+  .session-active .console-overlay-panel h2 {
+    margin: 10px 0 13px;
+    font-size: 32px;
+  }
+  .session-active .console-overlay-panel p {
+    font-size: 12px;
+    margin-bottom: 13px;
+  }
+  .session-active .briefing-objective {
+    margin-bottom: 16px;
+  }
+  .session-active .briefing-objective p {
+    margin-bottom: 0;
+    font-size: 11px;
+  }
+  .session-active .briefing-objective strong {
+    font-size: 18px;
+  }
+  .session-active .console-session-action {
+    min-height: 40px;
+    font-size: 27px;
+  }
+  .session-active .hud-readout {
+    font-size: 12px;
+  }
+}
+@media (max-width: 1120px) {
+  .session-active .status-bar {
+    padding-inline: 14px;
+  }
+  .session-active .data-cell {
+    padding-left: 16px;
+  }
+  .session-active .status-detail {
+    font-size: 7px;
+  }
+  .session-active .run-counters {
+    font-size: 9px;
+    gap: 18px;
+  }
+  .session-active .objective {
+    font-size: 11px;
+  }
+}
+.session-active .researcher-face {
+  width: auto;
+  height: 100%;
+  aspect-ratio: 2 / 3;
+  margin-inline: auto;
+  background-image: url('/game/faces-yudkowsky-n64.png');
+  background-size: 400% 132%;
+}
