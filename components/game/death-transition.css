@@ -28,7 +28,7 @@
   height: 128%;
   /* Static grain travels with the blood; there is no animated noise filter. */
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Cfilter id='grit'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.075 .22' numOctaves='3' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 -2.1'/%3E%3C/filter%3E%3Cpath fill='%23000000' opacity='.64' filter='url(%23grit)' d='M0 0h192v192H0z'/%3E%3C/svg%3E")
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Cfilter id='grit'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.12 .08' numOctaves='3' seed='13'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5 0 0 0 -2.1'/%3E%3C/filter%3E%3Cpath fill='%23000000' opacity='.32' filter='url(%23grit)' d='M0 0h192v192H0z'/%3E%3C/svg%3E")
       var(--blood-grain-offset) 0 / 192px 192px,
     radial-gradient(ellipse at 23% 37%, #190003b3, transparent 37%),
     radial-gradient(ellipse at 78% 69%, #240002c9, transparent 31%),

@@ -16,6 +16,14 @@ Formatting, lint, TypeScript, and all 83 unit tests pass. The unit coverage incl
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
 
+## Thicker blood wipe
+
+The death wipe now uses ten broad, overlapping sheets in place of 32 narrow strips. Each sheet spans 15–18% of the frame, with blunt ragged lobes, dark maroon clots, coarse static grain, and a muted red leading edge. CSS transforms move the sheets; the texture does not animate or load a separate asset on death. Full coverage precedes the unchanged 1.4-second results reveal.
+
+Both focused Chrome death tests pass: coverage/menu gating, held-Fire safety, retry/second-death reset, Return cleanup, and reduced motion. Visual review of the controlled 600 ms frame led to softer grain to keep the texture from reading as stone. The final texture-only adjustment was inspected separately without repeating lifecycle tests. Evidence: `/private/tmp/pdoom-thick-blood-proof/`.
+
+Formatting, lint, TypeScript, all 83 unit tests, and the final production build pass. A normal-input 99% encounter on the refreshed port 3001 preview verified the broad sheets, delayed death menu, and working Retry, with no page errors. Screenshots: `/private/tmp/pdoom-thick-blood-production-proof/`.
+
 ## Pistol, shutdown discharge, and death transition
 
 System Prompt now uses a 310 ms recorded report with a sharp attack and held body, decoded silently alongside the eight existing recordings. Each of the nine files loads independently; a missing pistol report uses its heavier synthesis fallback without discarding the shotgun, player vocals, or monster deaths. Shutdown's discharge adds a held blast, low impact, and delayed electrical aftershocks, with unchanged charge timing, ammunition cost, projectile, and damage.
