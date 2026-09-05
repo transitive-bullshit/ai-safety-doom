@@ -14,6 +14,7 @@ import {
 } from '@/lib/game/types'
 import { cn } from '@/lib/utils'
 import { MenuAudio, type MenuCue } from '@/lib/game/menu-audio'
+import { createGameLifecycleTracker } from '@/lib/game/analytics'
 import { TitleScreen, ConsoleText, ConsoleSkull } from './title-screen'
 import './gameplay-ui.css'
 import { CreditsRoll } from './credits-roll'
@@ -435,6 +436,7 @@ export function GameShell() {
     const container = gameContainer.current
     let disposed = false
     let instance: GameRuntime | null = null
+    const trackLifecycle = createGameLifecycleTracker()
 
     async function load() {
       try {
@@ -444,7 +446,10 @@ export function GameShell() {
           container,
           chosenDifficulty.current,
           (next) => {
-            if (!disposed) setSnapshot(next)
+            if (!disposed) {
+              trackLifecycle(next)
+              setSnapshot(next)
+            }
           }
         )
         if (disposed) {

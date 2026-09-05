@@ -35,6 +35,22 @@ interface State extends Point {
   notices: { kind: string; subject: string }[]
 }
 
+interface LifecycleEvent {
+  name: string
+  data: Record<string, string | number | boolean | null>
+}
+
+async function readLifecycleEvents(page: Page) {
+  return page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __gameAnalytics: LifecycleEvent[]
+        }
+      ).__gameAnalytics
+  )
+}
+
 async function readState(page: Page): Promise<State> {
   return page.locator(viewport).evaluate((canvas) => {
     const data = (canvas as HTMLCanvasElement).dataset
@@ -173,13 +189,24 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     if (message.type() === 'error') consoleErrors.push(message.text())
     if (message.type() === 'warning') warnings.push(message.text())
   })
-  // Vercel serves this deployment endpoint; local `next start` does not.
-  await page.route('**/_vercel/insights/script.js', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: ''
+  await page.addInitScript(() => {
+    const events: unknown[] = []
+    Object.assign(window, {
+      __gameAnalytics: events,
+      va: (command: string, event: unknown) => {
+        if (command === 'event') events.push(event)
+      }
     })
+  })
+  // Keep both development and deployment transports from replacing the event spy.
+  await page.route(
+    /(?:va\.vercel-scripts\.com\/v1\/script\.debug\.js|\/_vercel\/insights\/script\.js)/,
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: ''
+      })
   )
   await page.goto('/')
   await page.getByTestId('new-game').click()
@@ -430,6 +457,17 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     'data-phase',
     'won'
   )
+  await expect
+    .poll(async () => (await readLifecycleEvents(page)).map(({ name }) => name))
+    .toEqual(['Game Started', 'Level Finished'])
+  const finishEvent = (await readLifecycleEvents(page))[1]!
+  expect(finishEvent.data).toEqual({
+    difficulty: 10,
+    elapsedSeconds: expect.any(Number),
+    risksMitigated: expect.any(Number),
+    totalRisks: 21,
+    secretsFound: expect.any(Number)
+  })
   const final = await readState(page)
   const shutdown = page.getByTestId('shutdown-transition')
   await expect(shutdown).toHaveAttribute('data-stage', 'power-down')
@@ -572,6 +610,9 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     'data-phase',
     'playing'
   )
+  await expect
+    .poll(async () => (await readLifecycleEvents(page)).map(({ name }) => name))
+    .toEqual(['Game Started', 'Level Finished', 'Game Started'])
   await expect(shutdown).toHaveCount(0)
   await expect(page.locator(viewport)).toHaveAttribute(
     'data-shutdown-elapsed',
