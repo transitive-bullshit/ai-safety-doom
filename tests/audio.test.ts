@@ -1278,6 +1278,7 @@ void test('resume cancels terminal suspension; disposal disconnects every live g
 void test('shutdown has a sustained rising charge and a separate low descending launch', (context) => {
   const { audio, output } = setup(context)
   const before = output.oscillators.length
+  const gainStart = output.gains.length
   audio.effect('charge', 3)
   const charges = output.oscillators.slice(before)
   assert.ok(
@@ -1286,6 +1287,22 @@ void test('shutdown has a sustained rising charge and a separate low descending 
         osc.frequency.events.at(-1)!.value > osc.frequency.events[0]!.value &&
         osc.stopped - osc.started >= SHUTDOWN_CHARGE_SECONDS
     )
+  )
+  assert.ok(
+    charges.some((source) => {
+      const envelope = output.gains
+        .slice(gainStart)
+        .find((gain) => gain.gain.events.length && reaches(source, gain))
+        ?.gain.events
+      if (!envelope) return false
+      const peak = Math.max(...envelope.map((event) => event.value))
+      return envelope.some(
+        (event) =>
+          event.value >= peak * 0.8 &&
+          event.time - source.started >= SHUTDOWN_CHARGE_SECONDS * 0.9
+      )
+    }),
+    'the rising charge must stay audible through the end of the windup'
   )
   const launchStart = output.oscillators.length
   audio.effect('shot', 3)
@@ -1300,12 +1317,21 @@ void test('shutdown has a sustained rising charge and a separate low descending 
 })
 
 void test('shutdown discharge holds its blast body before decaying and sends every impact and delayed arc through the shared compressor', (context) => {
-  const { audio, output } = setup(context)
+  const report = { duration: 0.31 } as AudioBuffer
+  const { audio, output } = setup(context, true, { pistol: report })
   output.currentTime = 2
   const before = output.sources.length
   const gainStart = output.gains.length
   audio.effect('shot', 3)
   const launch = output.sources.slice(before)
+  const recordedImpact = launch.find((source) => source.buffer === report)!
+  assert.ok(recordedImpact)
+  assert.ok(recordedImpact.playbackRate.value < 1)
+  assert.ok(recordedImpact.playbackRate.value > 0)
+  assert.equal(
+    recordedImpact.stopped,
+    recordedImpact.started + report.duration / recordedImpact.playbackRate.value
+  )
   assert.ok(launch.length > 1)
   assert.ok(launch.some((source) => source.started === output.currentTime))
   assert.ok(

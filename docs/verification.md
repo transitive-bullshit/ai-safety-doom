@@ -12,9 +12,21 @@ Verified September 5, 2026.
 
 ## Checks
 
-Formatting, lint, TypeScript, and all 83 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
+Formatting, lint, TypeScript, and all 85 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
+
+## Plasma, shutdown charge, and pickup audio
+
+Plasma now has an immediate electrical crack, a 32 ms held body, low impact, and delayed arc, with all five dry layers finished within 100 ms for its 110 ms firing cadence. Shutdown retains its 720 ms gameplay windup, but the charging motor/current now intensifies and holds until just before release. The discharge holds its blast body for 260 ms and decays over 1.2 seconds, with descending low impact and staggered aftershocks. It also layers the already loaded CC0 pistol impulse at 0.58× rate; no new recording or download was added. Touch Grass uses a medical pressure seal, relief hiss, steady low hum, and latch; Training Data uses a cartridge slam, ratchet, and receiver lock with three distinct ammunition-pool registers. [Current audio design and provenance](design/audio-refresh.md).
+
+All 40 audio, 41 model, and four notification tests pass, for 85 total. Two additional plasma cases check the held body and delayed arc, cleanup between normally spaced shots, compressed routing, bounded pathological overlap, mute, pause/resume, and disposal. Existing shutdown tests now require the charge to hold its level near the end of the windup and the slowed recording to play for its full pitch-adjusted duration. TypeScript, focused audio lint, and test formatting pass.
+
+Chrome `OfflineAudioContext` produced 34 before/after 48 kHz stereo renders. They cover single and sustained plasma, charge/discharge/full shutdown, health and all three ammo pools, dense combat with score, and preserved pistol/shotgun/player/monster/armor/music references. Every intended event is dispatched exactly once; the sustained sequence contains 34 plasma shots at 110 ms intervals. The dense 16-second sequence contains 186 events, including 108 plasma shots, two charge/discharge sequences, overlapping enemy lifecycles, explosions, pickups, doors, vocals, and score.
+
+Plasma attack RMS increases from 0.022460 to 0.124132 (+14.85 dB), and body RMS from 0.018579 to 0.078532 (+12.52 dB). Sustained plasma peaks at 0.582316, retaining 4.70 dB headroom. Late shutdown-charge RMS rises from 0.000151 to 0.145761; the discharge's 100–350 ms sustained RMS increases from 0.104166 to 0.216421 (+6.35 dB). The full charge/discharge peaks at 0.734195. Health peaks at 0.185285 and ammo variants at 0.193350–0.305363. Dense combat peaks at 0.849368 with 1.42 dB headroom. All renders have finite samples, zero clipping, no browser audio errors, and matching intended/actual dispatch counts.
+
+All nine WAV hashes remain unchanged. Isolated pistol and monster-death render PCM is identical; shotgun, player voices, armor, and music differ by at most one 16-bit step in a few samples. These are signal and scheduling measurements, not a perceptual listening review. Evidence: `/private/tmp/pdoom-plasma-pulse-audition/measurements.json`, adjacent before/after WAVs and source snapshots, and renderer `/private/tmp/pdoom-render-plasma-pulse.mjs`.
 
 ## README, sharing, and dependency cleanup
 
@@ -213,6 +225,6 @@ Four focused Chrome browser regressions pass after the Doom 64 revision: entry/r
 
 ## Deliberate limits
 
-This is an authored Doom 64-inspired shooter, with approximate movement/combat and a Staging Area-inspired layout. It is not an exact reconstruction of Doom 64 behavior or map data. Geometry is authored on a grid, so chamfered outlines have stepped corners. The enemy sprites have six animation poses with hit tint, rather than eight directional views. Audio is originally synthesized.
+This is an authored Doom 64-inspired shooter, with approximate movement/combat and a Staging Area-inspired layout. It is not an exact reconstruction of Doom 64 behavior or map data. Geometry is authored on a grid, so chamfered outlines have stepped corners. The enemy sprites have six animation poses with hit tint, rather than eight directional views. Audio combines original synthesis, processed independent weapon/player recordings, and four original Doom monster death recordings.
 
 The 60 fps target is a reference-machine target, not a guarantee for every desktop. Further human playtesting can refine difficulty, encounter pacing, and the finer points of weapon feel. No Bloom, mobile, multiplayer, accounts, saved progression, or live AI calls are included.

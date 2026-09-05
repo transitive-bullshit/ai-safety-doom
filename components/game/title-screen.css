@@ -1,11 +1,3 @@
-@font-face {
-  font-family: 'Console Display';
-  src: url('/fonts/goldman-bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 .game-shell.menu-active {
   min-height: 0;
   padding: 0;
@@ -171,6 +163,9 @@
 }
 .console-text canvas {
   display: none;
+}
+.console-text canvas,
+.console-text-bitmap {
   max-width: 100%;
   height: auto;
   image-rendering: pixelated;
@@ -189,7 +184,7 @@
   color: #b3523c;
   text-shadow: 2px 3px #260e0b;
 }
-.console-item:focus .console-text canvas {
+.console-item:focus .console-text :is(canvas, .console-text-bitmap) {
   filter: brightness(1.48) drop-shadow(0 0 5px #b4311a38);
 }
 .console-skull {
@@ -287,14 +282,18 @@
   background: linear-gradient(90deg, #b362241c, #bb5e1811 75%, transparent);
   box-shadow: inset 2px 0 #c88649;
 }
-.console-difficulty[data-selected='true'] .console-text canvas {
+.console-difficulty[data-selected='true']
+  .console-text
+  :is(canvas, .console-text-bitmap) {
   filter: brightness(1.35);
 }
-.console-difficulty:focus-within .console-text canvas,
+.console-difficulty:focus-within
+  .console-text
+  :is(canvas, .console-text-bitmap),
 .console-screen[data-menu-page='difficulty']
   .console-item:focus
   .console-text
-  canvas {
+  :is(canvas, .console-text-bitmap) {
   filter: brightness(1.9) saturate(0.6) drop-shadow(0 0 7px #e4913948);
 }
 .console-difficulty:focus-within .console-text-fallback,

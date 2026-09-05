@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Analytics } from '@vercel/analytics/next'
+import { ConsoleGreeting } from '@/components/game/console-greeting'
 
+import './console-font.css'
 import './globals.css'
 
 const title = 'P(DOOM) — The Alignment Problem'
@@ -42,6 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang='en'>
       <body>
+        <ConsoleGreeting />
         {children}
         <Analytics />
       </body>

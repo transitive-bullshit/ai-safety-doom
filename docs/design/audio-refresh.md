@@ -2,31 +2,68 @@
 
 The score, menu mechanisms, and most combat effects use original Web Audio synthesis. System Prompt uses a short recorded report; RLHF uses a recorded shotgun blast and pump. Player injury and death use recorded human vocals. Monster deaths use four original Doom recordings, with coarse, filtered organic and industrial textures for awareness and attack. The score remains original; no Doom or Doom 64 music is bundled.
 
-## Recorded System Prompt and heavier shutdown discharge
+## Plasma, shutdown, and pickup refinement
+
+Mechanistic Interpretability now has an immediate electrical crack, a saturated midrange body held for 32 ms, a coarse electrical resonance, a low punch, and a brief delayed arc. The five source layers finish within 100 ms, before the weapon's next 110 ms shot. The small room sends preserve space without extending the dry pulse into a continuous drone. The firing cadence, projectile, ammunition consumption, and shared mix remain unchanged.
+
+The Big Fuckin' Shutdown Button retains its 720 ms windup. Its charging motor and filtered current rise in pitch and level, then hold near peak until 705 ms, with three increasingly strong arcs across the buildup. Release delivers an immediate crack, a blast body held for 260 ms and decaying over 1.2 seconds, descending sub-impact, coarse reactor resonance, and electrical aftershocks. The longest dry layer clears before the next permitted 1.65-second shot. This changes presentation only; charge timing, projectile, ammunition cost, and damage are unchanged.
+
+The discharge also layers the existing `system-prompt-pistol.wav` at **0.58× playback rate**, with a 3.2 kHz low-pass, gain 1.2, and room send 0.28. Its source remains the same CC0 michorvath recording documented in [the pistol provenance](../../public/game/audio/README.md#system-prompt-pistol-report). The slowed impulse is a runtime treatment of an already loaded buffer; no separate file, download, or Doom recording was added. The normal System Prompt shot still plays its unchanged buffer at native rate. If that optional buffer is missing, the synthetic shutdown layers still play.
+
+Touch Grass now uses a firm medical pressure seal, a descending pressure hiss, a steady low hum, and a final seated latch. Relief comes from the settled hum and pressure release, without a playful rising tune. Training Data uses a cartridge slam, coarse receiver resonance, a separate ratchet, and locking impact. The three ammunition pools vary the resonance register. Guardrails and weapon acquisition retain their existing cues. All layers use the existing compressor, room routing, 64-voice limit, mute/pause behavior, and complete node cleanup.
+
+### Current render verification
+
+Chrome `OfflineAudioContext` produced **34 before/after renders at 48 kHz stereo**: single and sustained plasma; shutdown charge, discharge, and full cycle; health and all three ammunition pools; armor; a dense combat mix; and preservation references for pistol, shotgun, player pain/death, all four monster deaths, and music. The renderer consumes a sorted event queue and checks actual dispatch count against the intended schedule, avoiding repeated events at floating-point time boundaries. Sustained plasma dispatches exactly 34 shots at 110 ms intervals. The 16-second combat mix dispatches 186 events, including 108 plasma shots, simultaneous enemy lifecycles, shutdown charges and blasts, explosions, pickups, doors, player vocals, and score.
+
+| Measurement | Before | After |
+| --- | --: | --: |
+| Isolated plasma peak | 0.147036 | 0.489854 |
+| Plasma attack RMS, first 15 ms | 0.022460 | 0.124132 |
+| Plasma body RMS, 15–60 ms | 0.018579 | 0.078532 |
+| Sustained plasma peak | 0.197235 | 0.582316 |
+| Late charge RMS, 500–680 ms into windup | 0.000151 | 0.145761 |
+| Isolated shutdown discharge peak | 0.567481 | 0.756736 |
+| Shutdown sustained RMS, 100–350 ms after release | 0.104166 | 0.216421 |
+| Full charge/discharge peak | 0.651651 | 0.734195 |
+| Health pickup peak | 0.114430 | 0.185285 |
+| Ammunition pickup peaks, three pools | 0.107430–0.143782 | 0.193350–0.305363 |
+| Dense combat peak | 0.762218 | 0.849368 |
+| Dense combat headroom | 2.36 dB | 1.42 dB |
+
+Plasma attack energy increases 14.85 dB and body energy 12.52 dB. Its sustained-fire render retains 4.70 dB peak headroom. Shutdown now remains audible through the end of its windup, and its discharge has 6.35 dB more sustained energy over 100–350 ms. All renders contain finite samples, no clipping, and no browser audio errors. Every dispatch count matches the intended event count.
+
+All nine recorded WAV hashes remain unchanged. Isolated pistol and monster-death PCM output is identical before/after. Shotgun, player vocals, armor, and music differ by at most one 16-bit PCM step in a small number of rendered samples, consistent with browser numerical rounding. These are signal and scheduling checks, not a perceptual listening assessment.
+
+The combined suite has **85 passing unit tests**, with TypeScript, focused audio lint, and test formatting also passing. Two new plasma cases cover held body, delayed arc, cadence cleanup, compressed routing, pathological overlap limits, mute, pause/resume, and disposal. Existing shutdown checks now also require charge level to persist through the windup and verify the slowed impulse's full pitch-adjusted duration. Evidence: `/private/tmp/pdoom-plasma-pulse-audition/measurements.json`, adjacent before/after WAVs and source snapshots, and `/private/tmp/pdoom-render-plasma-pulse.mjs`.
+
+## Recorded System Prompt
 
 System Prompt now plays `system-prompt-pistol.wav`, a 310 ms, mono, 44.1 kHz, 16-bit PCM report adapted directly from the preserved CC0 michorvath 20-gauge recording. This is a fictional pistol sound-design adaptation of a shotgun impulse, not a real pistol recording. It uses none of the existing RLHF sample or its pump. An 8% pitch rise, body/presence EQ, compression, mild soft saturation, and a short fade give the opening crack a sustained body. [Provenance, hashes, signal measurements, and the reproducible processing recipe](../../public/game/audio/README.md#system-prompt-pistol-report).
 
 The runtime plays one buffer at native rate, with gain 1.05 and room send 0.11 through the existing compressor. At the pistol's 280 ms firing interval, only the final 30 ms of a report overlaps the next; that portion of the asset is −33.21 dBFS RMS. The first shot uses the silently preloaded buffer. A missing recording uses a heavier, locally saturated noise report, low impact, and delayed mechanical tick without affecting the other prepared assets. Natural completion, voice stealing, pause/mute, and disposal use the same lifecycle as the shotgun.
 
-The Big Fuckin' Shutdown Button retains its existing charge timing, ammunition cost, projectile, and damage. Its discharge now combines an immediate electrical crack, a blast body held for 140 ms before decaying, a descending sub-impact, coarse motor resonance, and staggered electrical aftershocks. The longest layer lasts 880 ms, clearing before the next permitted 1.65-second shot. All layers and their room sends pass through the existing compressor and bounded 64-voice pool. No shared gain or player, shotgun, or music settings changed.
+### Preceding pistol/shutdown pass measurements
+
+The preceding pass added the recorded pistol and an earlier shutdown discharge with a 140 ms held body and 880 ms longest layer. The current charge/discharge design and 1.2-second tail are documented above. Both passes kept the existing ammunition cost, projectile, damage, shared gain, player vocals, shotgun, and music settings.
 
 Chrome `OfflineAudioContext` rendered 18 before/after comparisons at 48 kHz stereo, covering the pistol recording and fallback, shutdown, rapid pistol fire, dense combat, isolated shotgun, player pain/death, and music. Attack RMS measures the first 40 ms; body RMS measures 40–150 ms; sustained RMS measures 100–350 ms after discharge.
 
-| Measurement                       |   Before |    After |
-| --------------------------------- | -------: | -------: |
-| Isolated pistol peak              | 0.215939 | 0.428943 |
-| Pistol attack RMS                 | 0.051791 | 0.133919 |
-| Pistol body RMS                   | 0.006746 | 0.173268 |
-| Rapid pistol peak, 280 ms cadence | 0.278759 | 0.599617 |
-| Shutdown peak                     | 0.395239 | 0.567481 |
-| Shutdown body RMS                 | 0.068832 | 0.180179 |
-| Shutdown sustained RMS            | 0.022141 | 0.104166 |
-| Dense combat peak                 | 0.700298 | 0.786878 |
-| Dense combat headroom             |  3.09 dB |  2.08 dB |
+| Measurement              |   Before |    After |
+| ------------------------ | -------: | -------: |
+| Isolated pistol peak     | 0.215939 | 0.428943 |
+| Pistol attack RMS        | 0.051791 | 0.133919 |
+| Pistol body RMS          | 0.006746 | 0.173268 |
+| Rapid pistol render peak | 0.278759 | 0.599617 |
+| Shutdown peak            | 0.395239 | 0.567481 |
+| Shutdown body RMS        | 0.068832 | 0.180179 |
+| Shutdown sustained RMS   | 0.022141 | 0.104166 |
+| Dense combat peak        | 0.700298 | 0.786878 |
+| Dense combat headroom    |  3.09 dB |  2.08 dB |
 
 The recorded pistol attack gains 8.25 dB and its body gains 28.19 dB over the former short synthesized cue. Shutdown body gains 8.36 dB, with 13.45 dB more sustained energy in the 100–350 ms window. All renders have finite output, no clipped samples, and no browser audio errors. Player pain/death render PCM is exactly unchanged; isolated shotgun and music retain identical peaks, with at most one 16-bit PCM step of browser rounding difference in 10 and 74 samples respectively. All eight pre-existing WAV hashes remain unchanged. These are waveform and scheduling checks, not a perceptual listening review.
 
-Evidence: `/private/tmp/pdoom-heavy-weapons-audition/measurements.json`, before/after WAVs and bundled source in that directory, and renderer `/private/tmp/pdoom-render-heavy-weapons.mjs`. Five additional audio tests cover first pistol playback, independent fallback, cadence overlap, mute/pause/resume, held shutdown body, delayed aftershocks, compressed reflections, voice bounds, and node cleanup. The combined suite has 83 passing unit tests and passing TypeScript checks.
+Evidence: `/private/tmp/pdoom-heavy-weapons-audition/measurements.json`, before/after WAVs and bundled source in that directory, and renderer `/private/tmp/pdoom-render-heavy-weapons.mjs`. That temporary renderer could repeat some sustained-fire events at floating-point time boundaries; its overlap headroom checks are conservative, and isolated comparisons are unaffected. The current 34-render verification above corrects that scheduler and validates exact dispatch counts. Five additional audio tests covered first pistol playback, independent fallback, cadence overlap, mute/pause/resume, held shutdown body, delayed aftershocks, compressed reflections, voice bounds, and node cleanup. At that stage, 83 unit tests and TypeScript checks passed.
 
 ## Recorded RLHF shotgun
 
@@ -74,12 +111,12 @@ Each successful pickup carries `pickupKind`, plus `weapon` and `ammoPool` where 
 
 | Item | Audible identity |
 | --- | --- |
-| Touch Grass | Torn-grass rustle and a short low-pressure restorative breath |
+| Touch Grass | Firm medical pressure seal, descending relief hiss, steady low hum, and seated latch |
 | Guardrails | Heavy plate seating followed by a separate steel locking latch |
-| Training Data | Three crunchy tape/head transfers with a low mechanical rasp; ammunition pool changes the rasp register |
+| Training Data | Data-cartridge slam, coarse receiver resonance, ratchet, and lock; ammunition pool changes the resonance register |
 | Weapon | A heavy mechanism seating and energizing; shutdown uses a longer, deeper motor and contactor |
 
-The earlier pure-tone swells, digital chirps, and broad musical pitch slides are removed. Filtered noise and locally saturated, band-limited sawtooth excitation provide the material texture. Health retains a gentler attack; armor has a spaced double strike; data has three short transfers; weapon acquisition carries more weight and a longer tail. Tests verify four distinct profiles, ammunition-pool variation, the heavier shutdown cue, compressor routing, pause/mute, bounded voices, and cleanup.
+The earlier pure-tone swells, digital chirps, and broad musical pitch slides are removed. Filtered noise and locally saturated, band-limited sawtooth excitation provide the material texture. Health combines a firm engagement with a steady 94 Hz restorative hum; armor has a spaced double strike; data separates its initial slam from the ratchet and lock; weapon acquisition carries more weight and a longer tail. Tests verify four distinct profiles, ammunition-pool variation, the heavier shutdown acquisition cue, compressor routing, pause/mute, bounded voices, and cleanup.
 
 ## Enemy voices
 

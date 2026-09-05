@@ -12,10 +12,19 @@ async function bitmapReady(page: Page) {
     page.locator('.console-text:not([data-ready="true"])')
   ).toHaveCount(0)
   const rendered = await page
-    .locator('.console-text canvas')
-    .evaluateAll((canvases) =>
-      canvases.every((element) => {
-        const canvas = element as HTMLCanvasElement
+    .locator('.console-text canvas,.console-text img')
+    .evaluateAll((rasters) =>
+      rasters.every((element) => {
+        const canvas =
+          element instanceof HTMLImageElement
+            ? document.createElement('canvas')
+            : (element as HTMLCanvasElement)
+        if (element instanceof HTMLImageElement) {
+          if (!element.complete || !element.naturalWidth) return false
+          canvas.width = element.naturalWidth
+          canvas.height = element.naturalHeight
+          canvas.getContext('2d')!.drawImage(element, 0, 0)
+        }
         if (canvas.width <= 0 || canvas.height <= 0) return false
         const pixels = canvas
           .getContext('2d')!
@@ -196,7 +205,7 @@ for (const viewport of [
     })
     expect(font.loaded).toBe(true)
     expect(
-      fonts.some((response) => response.status >= 200 && response.status < 300)
+      fonts.every((response) => response.status >= 200 && response.status < 300)
     ).toBe(true)
     await testInfo.attach('loaded-fonts', {
       body: JSON.stringify({ font, resources: fonts }),

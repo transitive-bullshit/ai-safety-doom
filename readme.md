@@ -1,10 +1,8 @@
 <p align="center">
   <a href="https://p-doom.transitivebullsh.it">
-    <img src="public/game/pdoom-logo-n64.png" alt="P(DOOM) — play the game" width="720" />
+    <img src="docs/images/readme-banner.jpg" alt="P(DOOM) — The Alignment Problem — play the game" width="100%" />
   </a>
 </p>
-
-<h2 align="center">The Alignment Problem</h2>
 
 <p align="center">
   <strong>They built a god. You brought a shotgun.</strong>

@@ -7,12 +7,16 @@ import Image from 'next/image'
 import { DIFFICULTIES, type Difficulty } from '@/lib/game/types'
 import type { MenuCue } from '@/lib/game/menu-audio'
 import { SocialLinks } from './social-links'
+import titleBitmaps from './title-bitmaps.json'
 import './title-screen.css'
 
 /** A small source bitmap, including its bevel, scales like a console texture. */
 export function ConsoleText({ children }: { children: string }) {
   const canvas = useRef<HTMLCanvasElement>(null)
+  const titleBitmap = titleBitmaps[children as keyof typeof titleBitmaps]
   useEffect(() => {
+    // The first screen ships its final pixels; it never waits for hydration.
+    if (titleBitmap) return
     let disposed = false
     const draw = () => {
       if (disposed || !canvas.current) return
@@ -60,18 +64,41 @@ export function ConsoleText({ children }: { children: string }) {
       target.style.width = `${width / 24}em`
       target.parentElement!.dataset.ready = 'true'
     }
-    void document.fonts.load('700 22px "Console Display"').then(draw, draw)
+    void document.fonts.load('700 22px "Console Display"').then(
+      (faces) => {
+        // A rejected/empty load must leave readable text, not bake a wrong font.
+        if (faces.some((face) => face.status === 'loaded')) draw()
+      },
+      () => {}
+    )
     return () => {
       disposed = true
     }
-  }, [children])
+  }, [children, titleBitmap])
   return (
-    <span className='console-text'>
+    <span
+      className='console-text'
+      data-ready={titleBitmap ? 'true' : undefined}
+    >
       <span className='sr-only'>{children}</span>
       <span className='console-text-fallback' aria-hidden='true'>
         {children}
       </span>
-      <canvas ref={canvas} aria-hidden='true' />
+      {titleBitmap ? (
+        <Image
+          className='console-text-bitmap'
+          src={titleBitmap.uri}
+          alt=''
+          width={titleBitmap.width}
+          height={titleBitmap.height}
+          style={{ width: `${titleBitmap.width / 24}em` }}
+          loading='eager'
+          unoptimized
+          draggable={false}
+        />
+      ) : (
+        <canvas ref={canvas} aria-hidden='true' />
+      )}
     </span>
   )
 }
