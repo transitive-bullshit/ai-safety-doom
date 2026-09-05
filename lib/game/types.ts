@@ -18,6 +18,8 @@ export interface GameNotice {
 export type Phase = 'loading' | 'playing' | 'paused' | 'dead' | 'won' | 'error'
 export type Point = { x: number; z: number }
 export const SHUTDOWN_CHARGE_SECONDS = 0.72
+export const SHUTDOWN_FINALE_SECONDS = 2.2
+export const SHUTDOWN_PAYOFF_SECONDS = 0.85
 
 export interface GameSnapshot {
   phase: Phase
@@ -125,8 +127,8 @@ export const initialSnapshot = (difficulty: Difficulty): GameSnapshot => ({
   difficulty,
   health: 100,
   armor: 0,
-  ammo: 80,
-  ammoPools: [80, 0, 0],
+  ammo: 0,
+  ammoPools: [0, 0, 0],
   weapon: 0,
   owned: [0],
   kills: 0,

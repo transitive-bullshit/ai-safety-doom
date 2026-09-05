@@ -119,6 +119,7 @@ export class GameAudio {
   private nextPainAt = 0
   private painVariant = 0
   private playerDead = false
+  private shuttingDown = false
 
   constructor(private samples: GameAudioAssets = {}) {}
 
@@ -247,7 +248,11 @@ export class GameAudio {
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
     if (!this.context) return
-    this.ambience?.gain.setTargetAtTime(0, this.context.currentTime, 0.025)
+    this.ambience?.gain.setTargetAtTime(
+      0,
+      this.context.currentTime,
+      this.shuttingDown ? 0.28 : 0.025
+    )
     const now = this.context.currentTime
     const lastEnd = Math.max(
       now,
@@ -1247,9 +1252,40 @@ export class GameAudio {
     } else if (type === 'door') {
       this.pressureDoor(time, detail.doorAction ?? 'open', spatial)
     } else if (type === 'win') {
-      this.rasp(61, 43, 0.9, 0.32, time, { wet: 0.25 }, 320)
-      this.burst(0.13, 0.32, 1100, time, { rough: true })
-      this.burst(0.45, 0.2, 480, time + 0.18, { rough: true })
+      this.shuttingDown = true
+      // The switch hits its stop; relay banks drop out while the motors coast down.
+      this.burst(0.11, 0.44, 1700, time, { rough: true, wet: 0.08 })
+      this.tone(96, 27, 0.25, 0.35, 'sine', time, { wet: 0.08 })
+      this.rasp(181, 21, 1.8, 0.2, time + 0.08, { rough: true, wet: 0.08 }, 740)
+      this.tone(76, 12, 1.85, 0.18, 'sine', time + 0.04, { wet: 0.06 })
+      this.burst(1.7, 0.15, 1300, time + 0.1, {
+        rough: true,
+        wet: 0.06,
+        filterEnd: 90
+      })
+      for (const [delay, pan] of [
+        [0.34, -0.65],
+        [0.72, 0.55],
+        [1.1, -0.15]
+      ]) {
+        this.burst(
+          0.065,
+          0.17,
+          1800,
+          time + delay!,
+          { rough: true, pan, wet: 0.12 },
+          'bandpass'
+        )
+        this.rasp(
+          149,
+          69,
+          0.14,
+          0.1,
+          time + delay!,
+          { rough: true, pan, wet: 0.08 },
+          510
+        )
+      }
     }
   }
 

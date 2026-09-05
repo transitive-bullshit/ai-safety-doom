@@ -18,6 +18,7 @@ import { TitleScreen, ConsoleText, ConsoleSkull } from './title-screen'
 import './gameplay-ui.css'
 import { CreditsRoll } from './credits-roll'
 import { DeathTransition } from './death-transition'
+import { ShutdownTransition } from './shutdown-transition'
 
 function subscribeToNavigation(onChange: () => void) {
   window.addEventListener('popstate', onChange)
@@ -147,8 +148,16 @@ function Hud({ snapshot }: { snapshot: GameSnapshot }) {
       </div>
       <div className='status-bar'>
         <div className='status-cell ammo-cell'>
-          <strong className='status-number' data-testid='hud-ammo'>
-            {snapshot.ammo}
+          <strong
+            className='status-number'
+            data-testid='hud-ammo'
+            data-infinite={snapshot.weapon === 0}
+            data-value={snapshot.ammo}
+            aria-label={
+              snapshot.weapon === 0 ? 'Unlimited ammunition' : undefined
+            }
+          >
+            {snapshot.weapon === 0 ? '∞' : snapshot.ammo}
           </strong>
           <span className='status-label'>TRAINING DATA</span>
           <span className='status-detail'>{weapon.ammo}</span>
@@ -206,15 +215,26 @@ function Hud({ snapshot }: { snapshot: GameSnapshot }) {
         <div className='status-cell data-cell'>
           <div>
             <span>PRETRAIN</span>
-            <b>{snapshot.ammoPools[0] ?? 0}</b>
+            <b
+              data-ammo-pool='0'
+              data-infinite='true'
+              data-value='0'
+              aria-label='Unlimited pretraining data'
+            >
+              ∞
+            </b>
           </div>
           <div>
             <span>PREFS</span>
-            <b>{snapshot.ammoPools[1] ?? 0}</b>
+            <b data-ammo-pool='1' data-value={snapshot.ammoPools[1] ?? 0}>
+              {snapshot.ammoPools[1] ?? 0}
+            </b>
           </div>
           <div>
             <span>SYNTH</span>
-            <b>{snapshot.ammoPools[2] ?? 0}</b>
+            <b data-ammo-pool='2' data-value={snapshot.ammoPools[2] ?? 0}>
+              {snapshot.ammoPools[2] ?? 0}
+            </b>
           </div>
         </div>
       </div>
@@ -354,7 +374,9 @@ export function GameShell() {
 
   useEffect(() => {
     menuAudio.current?.setMuted(muted)
-    menuAudio.current?.setActive(phase !== 'playing')
+    menuAudio.current?.setActive(phase !== 'playing', {
+      music: phase !== 'won'
+    })
   }, [muted, phase])
 
   function cue(kind: MenuCue) {
@@ -453,7 +475,7 @@ export function GameShell() {
   }, [session])
 
   useEffect(() => {
-    if (['paused', 'won', 'error'].includes(phase))
+    if (['paused', 'error'].includes(phase))
       entryButton.current?.focus({ preventScroll: true })
   }, [phase])
 
@@ -573,6 +595,7 @@ export function GameShell() {
               <div
                 className='weapon-position'
                 data-weapon={snapshot.weapon}
+                data-shot={snapshot.shot}
                 data-charging={snapshot.chargeProgress !== null}
                 data-paused={snapshot.phase === 'paused'}
                 aria-hidden='true'
@@ -633,7 +656,9 @@ export function GameShell() {
                   <kbd>E</kbd> {snapshot.prompt}
                 </div>
               ) : null}
-              {snapshot.phase !== 'playing' && snapshot.phase !== 'dead' ? (
+              {snapshot.phase !== 'playing' &&
+              snapshot.phase !== 'dead' &&
+              snapshot.phase !== 'won' ? (
                 <div className='game-overlay' data-menu-phase={snapshot.phase}>
                   <div
                     className='overlay-panel console-overlay-panel'
@@ -707,31 +732,6 @@ export function GameShell() {
                         </nav>
                       </>
                     ) : null}
-                    {snapshot.phase === 'won' ? (
-                      <>
-                        <div className='eyebrow'>LAB AI TRAINING SHUT DOWN</div>
-                        <h2>
-                          <ConsoleText>DEPLOYMENT DELAYED.</ConsoleText>
-                        </h2>
-                        <p className='victory-payoff'>By 48 hours.</p>
-                        <RunResult snapshot={snapshot} />
-                        <ConsoleAction
-                          buttonRef={entryButton}
-                          testId='restart-game'
-                          onClick={beginRun}
-                          onCue={cue}
-                        >
-                          RESTART TRAINING
-                        </ConsoleAction>
-                        <ConsoleAction
-                          testId='return-menu'
-                          onClick={returnToMenu}
-                          onCue={cue}
-                        >
-                          MAIN MENU
-                        </ConsoleAction>
-                      </>
-                    ) : null}
                     {snapshot.phase === 'error' ? (
                       <>
                         <div className='eyebrow'>
@@ -767,6 +767,25 @@ export function GameShell() {
               ) : null}
             </div>
             <Hud snapshot={snapshot} />
+            {snapshot.phase === 'won' ? (
+              <ShutdownTransition key={session} onKeyDown={navigateOverlay}>
+                <RunResult snapshot={snapshot} />
+                <ConsoleAction
+                  testId='restart-game'
+                  onClick={beginRun}
+                  onCue={cue}
+                >
+                  RESTART TRAINING
+                </ConsoleAction>
+                <ConsoleAction
+                  testId='return-menu'
+                  onClick={returnToMenu}
+                  onCue={cue}
+                >
+                  MAIN MENU
+                </ConsoleAction>
+              </ShutdownTransition>
+            ) : null}
             {snapshot.phase === 'dead' ? (
               <DeathTransition key={session}>
                 <div className='game-overlay' data-menu-phase='dead'>

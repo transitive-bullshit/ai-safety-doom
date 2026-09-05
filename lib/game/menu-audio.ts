@@ -241,12 +241,14 @@ export class MenuAudio {
   private context: AudioContext | undefined
   private master: GainNode | undefined
   private effects: GainNode | undefined
+  private scoreOutput: GainNode | undefined
   private noise: AudioBuffer | undefined
   private score: TrainingScore | undefined
   private graph: AudioNode[] = []
   private voices = new Set<Voice>()
   private muted = false
   private active = true
+  private music = true
   private disposed = false
   private lastMove = -Infinity
   private visibility = () => this.syncState()
@@ -277,7 +279,12 @@ export class MenuAudio {
       seed = (Math.imul(seed, 1664525) + 1013904223) | 0
       samples[i] = (seed >>> 0) / 2147483648 - 1
     }
-    this.score = new TrainingScore(ctx, compressor, this.noise, 'menu')
+    const scoreOutput = ctx.createGain()
+    scoreOutput.gain.value = this.music ? 1 : 0
+    scoreOutput.connect(compressor)
+    this.scoreOutput = scoreOutput
+    this.graph.push(scoreOutput)
+    this.score = new TrainingScore(ctx, scoreOutput, this.noise, 'menu')
     if (typeof document !== 'undefined')
       document.addEventListener('visibilitychange', this.visibility)
   }
@@ -285,9 +292,12 @@ export class MenuAudio {
   private syncState() {
     const ctx = this.context
     if (!ctx) return
+    // Waking menu effects after a shutdown must not replay suspended title chords.
+    this.scoreOutput?.gain.setValueAtTime(this.music ? 1 : 0, ctx.currentTime)
     if (this.active && (typeof document === 'undefined' || !document.hidden)) {
       void ctx.resume().catch(() => {})
-      this.score?.start()
+      if (this.music) this.score?.start()
+      else this.score?.pause()
     } else {
       this.score?.pause()
       // Menu impacts should not resume halfway through a clunk after a run.
@@ -297,8 +307,9 @@ export class MenuAudio {
     }
   }
 
-  setActive(active: boolean) {
+  setActive(active: boolean, { music = true }: { music?: boolean } = {}) {
     this.active = active
+    this.music = music
     this.syncState()
   }
 
@@ -405,7 +416,7 @@ export class MenuAudio {
     this.graph = []
     void this.context?.close().catch(() => {})
     this.context = undefined
-    this.master = this.effects = undefined
+    this.master = this.effects = this.scoreOutput = undefined
     this.noise = undefined
     this.score = undefined
   }

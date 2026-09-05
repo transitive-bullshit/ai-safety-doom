@@ -29,6 +29,7 @@ interface State extends Point {
   weapon: number
   health: number
   bossDefeated: boolean
+  bossEnraged: boolean
   fps: number
   charge: number | null
   notices: { kind: string; subject: string }[]
@@ -52,9 +53,9 @@ async function readState(page: Page): Promise<State> {
       owned: Array.from(document.querySelectorAll('.arsenal-keys .owned')).map(
         (element) => Number(element.textContent) - 1
       ),
-      ammo: Array.from(document.querySelectorAll('.data-cell b')).map(
-        (element) => Number(element.textContent)
-      ),
+      ammo: Array.from(
+        document.querySelectorAll('.data-cell [data-ammo-pool]')
+      ).map((element) => Number(element.getAttribute('data-value'))),
       weapon: Number(
         document
           .querySelector('[data-testid="hud-weapon"]')
@@ -64,6 +65,7 @@ async function readState(page: Page): Promise<State> {
         document.querySelector('[data-testid="hud-health"]')?.textContent ?? '0'
       ),
       bossDefeated: data.bossDefeated === 'true',
+      bossEnraged: data.bossEnraged === 'true',
       fps: Number(data.fps),
       charge:
         document.querySelector<HTMLProgressElement>(
@@ -191,6 +193,7 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
   let previousInteraction = 0
   let previousReport = -1
   let bossSeen = false
+  let bossEscalationSeen = false
   let previousEnemies: State['enemies'] = []
   const captured = new Set<string>()
   const weaponNotices = new Set<string>()
@@ -232,6 +235,10 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
       await saveView('shutdown-weapon-found')
     }
     if (state.phase === 'won') break
+    if (state.bossEnraged && !state.bossDefeated && !bossEscalationSeen) {
+      bossEscalationSeen = true
+      await saveView('boss-emergency-phase')
+    }
     expect(
       state.phase,
       `Run ended before victory at route segment ${goalIndex}`
@@ -337,7 +344,7 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
       previousInteraction = Date.now()
     }
     if (state.bossDefeated && distance(state, LEVEL.shutdown) < 3.4) {
-      await setKeys(new Set())
+      await setKeys(new Set(['Space', 'Enter']))
       await page.keyboard.press('e')
     }
     const scene =
@@ -400,12 +407,53 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     }
     await page.waitForTimeout(70)
   }
-  await setKeys(new Set())
   await expect(page.getByTestId('game-shell')).toHaveAttribute(
     'data-phase',
     'won'
   )
   const final = await readState(page)
+  const shutdown = page.getByTestId('shutdown-transition')
+  await expect(shutdown).toHaveAttribute('data-stage', 'power-down')
+  await expect(page.getByTestId('restart-game')).toHaveCount(0)
+  await expect(page.getByTestId('shutdown-title')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('game-shell')).toHaveAttribute(
+    'data-phase',
+    'won'
+  )
+  await page.waitForTimeout(440)
+  await saveView('shutdown-wave')
+  const duringShutdown = await readState(page)
+  expect({
+    x: duringShutdown.x,
+    z: duringShutdown.z,
+    health: duringShutdown.health,
+    enemies: duringShutdown.enemies
+  }).toEqual({
+    x: final.x,
+    z: final.z,
+    health: final.health,
+    enemies: final.enemies
+  })
+  await expect(shutdown).toHaveAttribute('data-stage', 'delayed')
+  await expect(page.getByTestId('shutdown-title')).toBeVisible()
+  await expect(page.getByTestId('shutdown-payoff')).toHaveCount(0)
+  await expect(page.getByTestId('restart-game')).toHaveCount(0)
+  await expect(page.locator(viewport)).toHaveAttribute(
+    'data-powered-lamps',
+    '0'
+  )
+  await saveView('shutdown-delayed-title')
+  await expect(shutdown).toHaveAttribute('data-stage', 'payoff')
+  await expect(page.getByTestId('shutdown-payoff')).toBeVisible()
+  await expect(page.getByTestId('restart-game')).toBeFocused()
+  await page.keyboard.down('Space')
+  await page.keyboard.down('Enter')
+  await setKeys(new Set())
+  await expect(page.getByTestId('game-shell')).toHaveAttribute(
+    'data-phase',
+    'won'
+  )
   expect(final.bossDefeated).toBe(true)
   expect(final.enemies.find((enemy) => enemy.kind === 'sam')?.health).toBe(0)
   expect(final.owned).toEqual(
@@ -416,6 +464,7 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     )
   )
   expect(bossSeen).toBe(true)
+  expect(bossEscalationSeen).toBe(true)
   expect(captured.has('sam-death')).toBe(true)
   expect(chargeSeen).toBe(true)
   expect([...weaponNotices]).toEqual(
@@ -465,6 +514,7 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
         warnings,
         weaponNotices: [...weaponNotices],
         vanquishedKinds: [...vanquishedKinds],
+        bossEscalationSeen,
         busyFrameSamples,
         final
       },
@@ -476,4 +526,21 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     path: evidence,
     contentType: 'application/json'
   })
+  await page.getByTestId('restart-game').click()
+  await expect(page.getByTestId('game-shell')).toHaveAttribute(
+    'data-phase',
+    'playing'
+  )
+  await expect(shutdown).toHaveCount(0)
+  await expect(page.locator(viewport)).toHaveAttribute(
+    'data-shutdown-elapsed',
+    '-1.000'
+  )
+  await expect(page.locator(viewport)).toHaveAttribute(
+    'data-boss-enraged',
+    'false'
+  )
+  expect(
+    Number(await page.locator(viewport).getAttribute('data-powered-lamps'))
+  ).toBeGreaterThan(0)
 })

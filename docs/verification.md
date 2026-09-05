@@ -12,9 +12,23 @@ Verified September 5, 2026.
 
 ## Checks
 
-Formatting, lint, TypeScript, and all 85 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
+Formatting, lint, TypeScript, and all 95 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
+
+## Firing response, boss escalation, and shutdown finale
+
+Actual shots now publish their weapon feedback immediately instead of waiting for the next 100 ms HUD poll. Eleven observed pistol shots committed the pose within 3.6 ms, compared with a maximum 99.4 ms/seven frames on the previous path. Every shot produced recoil and a muzzle flash. Seven Chrome cases cover firing cadence and release, pause/resume, direct entry, slow/cancelled loading, denied mouse capture, and swallowed release events. Evidence: `/private/tmp/pdoom-firing-feedback-green-proof/` and `/private/tmp/pdoom-firing-feedback-red-proof/`.
+
+The pistol has no ammunition cost and the HUD displays infinity. Finite numeric reserves remain serializable; shotgun, plasma, and Shutdown Button costs are unchanged. The former pistol-ammo pickup now supplies preference rounds with its existing posttraining joke. Sustained-fire unit checks cover all five difficulties and verify other ammunition pools are untouched.
+
+Sam enters a second phase on a surviving half-health crossing. Emergency lighting and an urgent announcement accompany alternating wide fans and a telegraphed three-rocket burst. The burst commits its aim on release, so strafing can evade it. Tests cover all difficulty tiers, cadence and spread, interrupted attacks, line-of-sight loss, fatal-hit suppression, one announcement, and a fresh run resetting the phase.
+
+Activating the final button freezes combat immediately while the presentation continues: the button depresses, light banks and terminals go dark, fans coast down, and relays/motors descend into silence. Deployment Delayed appears after 2.2 seconds; the 48-hour payoff and controls follow 850 ms later. Victory menu clunks remain active with the score suppressed. Reduced motion reveals a static result immediately.
+
+A normal-input Chrome route reached all four weapons, observed Sam’s escalation, defeated him, and shut down the lab in roughly two minutes. It verified frozen world state, extinguished lamps, delayed controls, held Space/Enter through reveal without accidental restart, and clean retry. Busy-frame samples ranged from 43 to 60 fps, median 60, on the reference machine. There were no browser warnings or errors. An isolated harness of the actual transition component verified reduced-motion behavior and cleanup. Screenshots were inspected. Evidence: `/private/tmp/pdoom-shutdown-proof/`. Further unimplemented ideas are in [the next polish audit](design/next-polish-audit.md).
+
+A focused fixture using the actual renderer verified the final visible button depression, nearby lighting shutting off before distant banks, and Sam’s settled rapid-attack tint. The refreshed production build on port 3001 passed the firing/infinite-ammo/pause journey again, with no page errors. Evidence: `/private/tmp/pdoom-shutdown-proof/view-renderer-evidence.json` and `/private/tmp/pdoom-finale-production-proof/`.
 
 ## Boss death vocal replacement
 

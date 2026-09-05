@@ -13,7 +13,10 @@ const credits = [
     lines: ['TRAVIS FISCHER'],
     href: 'https://x.com/transitive_bs'
   },
-  { role: 'BUILT WITH', lines: ['GPT-6 ASTRA', 'CODEX', 'THREE.JS · NEXT.JS'] },
+  {
+    role: 'BUILT WITH',
+    lines: ['GPT-6 ASTRA', 'CODEX', 'THREE.JS', 'NEXT.JS']
+  },
   {
     role: 'ART & ATMOSPHERE',
     lines: ['AI-GENERATED PARODY ART', 'ORIGINAL SYNTHESIZED SOUND']

@@ -18,7 +18,7 @@ import {
 } from 'three'
 import type { Scene, Texture } from 'three'
 
-import { at, CELL, floorHeight, sectorAt } from './level'
+import { at, CELL, LEVEL, floorHeight, sectorAt } from './level'
 import type { GameWorld } from './model'
 
 type Light = (x: number, y: number, z: number) => Color
@@ -50,6 +50,8 @@ export class FacilityScenery {
     title: string
     status: string
     index: number
+    x: number
+    z: number
   }[] = []
   private steam: {
     sprite: Sprite
@@ -403,8 +405,10 @@ export class FacilityScenery {
     }
   }
 
-  update(time: number) {
-    for (const fan of this.fans) fan.rotation.z = time * 1.8
+  update(time: number, shutdownElapsed = -1, emergency = 0) {
+    const coast = Math.min(1.8, Math.max(0, shutdownElapsed))
+    for (const fan of this.fans)
+      fan.rotation.z = time * 1.8 + coast * 1.8 - coast * coast * 0.5
     for (const cloud of this.steam) {
       const progress = (time * 0.16 + cloud.phase) % 1
       cloud.sprite.position.set(
@@ -413,7 +417,10 @@ export class FacilityScenery {
         cloud.z
       )
       cloud.sprite.scale.setScalar(0.45 + progress * 1.45)
-      cloud.sprite.material.opacity = Math.sin(progress * Math.PI) * 0.27
+      cloud.sprite.material.opacity =
+        Math.sin(progress * Math.PI) *
+        0.27 *
+        (shutdownElapsed < 0 ? 1 : Math.max(0, 1 - shutdownElapsed / 1.4))
     }
     for (const barrel of this.world.barrels) {
       const meshes = this.barrels.get(barrel.id)!
@@ -423,17 +430,41 @@ export class FacilityScenery {
     for (const status of this.statusLights) {
       const door = this.world.doors.find((door) => door.id === status.door)!
       ;(status.light.material as MeshBasicMaterial).color.set(
-        door.targetOpen ? '#8eac6b' : '#a05235'
+        shutdownElapsed > 0.4
+          ? '#090605'
+          : emergency > 0
+            ? '#e3492a'
+            : door.targetOpen
+              ? '#8eac6b'
+              : '#a05235'
       )
     }
-    const tick = Math.floor(time * 2)
+    const tick = Math.floor(time * 2 + Math.max(0, shutdownElapsed) * 4)
     if (tick === this.monitorTick) return
     this.monitorTick = tick
     for (const screen of this.monitors) {
       const { ctx } = screen
+      const cutoff =
+        0.24 +
+        Math.min(
+          6,
+          Math.floor(
+            Math.hypot(
+              screen.x - LEVEL.shutdown.x,
+              screen.z - LEVEL.shutdown.z
+            ) / 7
+          )
+        ) *
+          0.2
+      if (shutdownElapsed >= cutoff) {
+        ctx.fillStyle = '#020203'
+        ctx.fillRect(0, 0, 256, 144)
+        screen.texture.needsUpdate = true
+        continue
+      }
       ctx.fillStyle = '#091713'
       ctx.fillRect(0, 0, 256, 144)
-      ctx.fillStyle = '#82b89a'
+      ctx.fillStyle = emergency > 0 ? '#d17a61' : '#82b89a'
       ctx.font = 'bold 13px monospace'
       ctx.fillText(screen.title, 12, 24)
       ctx.fillRect(12, 31, 228, 1)

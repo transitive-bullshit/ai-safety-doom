@@ -33,9 +33,13 @@ test('slow assets enter play directly without a second gesture or held trigger',
   )
   await expect(page.getByTestId('enter-game')).toHaveCount(0)
   await page.waitForTimeout(700)
-  expect(Number(await page.getByTestId('hud-ammo').textContent())).toBe(
-    initialSnapshot(1).ammo
+  await expect(page.getByTestId('hud-ammo')).toHaveAttribute(
+    'data-infinite',
+    'true'
   )
+  expect(
+    Number(await page.getByTestId('hud-ammo').getAttribute('data-value'))
+  ).toBe(initialSnapshot(1).ammo)
   const canvas = page.getByTestId('game-canvas')
   const before = Number(await canvas.getAttribute('data-z'))
   await page.keyboard.down('w')
@@ -96,9 +100,13 @@ test('cancelling an in-flight launch cannot replace the next training run', asyn
   )
   await expect(page).toHaveURL(/\?skill=1$/)
   await page.waitForTimeout(750)
-  expect(Number(await page.getByTestId('hud-ammo').textContent())).toBe(
-    initialSnapshot(1).ammo
+  await expect(page.getByTestId('hud-ammo')).toHaveAttribute(
+    'data-infinite',
+    'true'
   )
+  expect(
+    Number(await page.getByTestId('hud-ammo').getAttribute('data-value'))
+  ).toBe(initialSnapshot(1).ammo)
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('game-shell')).toHaveAttribute(
     'data-phase',

@@ -85,6 +85,7 @@ export async function createGameRuntime(
     canvas.dataset.phase = phase
     canvas.dataset.difficulty = String(difficulty)
     canvas.dataset.fps = String(fps)
+    canvas.dataset.shot = String(world.shotCounter)
     canvas.dataset.bossDefeated = String(world.bossDefeated)
     canvas.dataset.barrels = JSON.stringify(world.barrels)
     canvas.dataset.enemies = JSON.stringify(
@@ -303,7 +304,7 @@ export async function createGameRuntime(
         sprint: keys.has('ShiftLeft') || keys.has('ShiftRight')
       })
       mouseTurn = 0
-      let chargeStarted = false
+      let weaponFeedbackChanged = false
       const sector = sectorAt(world.player.x, world.player.z)
       audio.setEnvironment(sector.id, sector.sky)
       for (const event of world.drainEvents()) {
@@ -319,14 +320,21 @@ export async function createGameRuntime(
             : 0
         if (event.type !== 'hit')
           audio.effect(event.type, event.weapon, { ...event, pan, distance })
-        if (event.type === 'charge') chargeStarted = true
+        if (event.type === 'shot')
+          canvas.dataset.shot = String(world.shotCounter)
+        if (event.type === 'shot' || event.type === 'charge')
+          weaponFeedbackChanged = true
       }
-      if (chargeStarted) emit()
       if (world.phase !== 'playing') {
         phase = world.phase
         clearInput()
         releasePointer()
         audio.finish()
+        emit()
+      } else if (weaponFeedbackChanged) {
+        // Recoil and muzzle flash belong to the shot that just sounded. Keep
+        // the ordinary HUD refresh throttled, but never delay a weapon event.
+        nextSnapshot = now + 100
         emit()
       }
     }

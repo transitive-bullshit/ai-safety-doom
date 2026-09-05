@@ -1259,6 +1259,36 @@ void test('terminal cues decay before suspension, and finishing does not schedul
   assert.equal(output.state, 'suspended')
 })
 
+void test('lab shutdown drops relay banks in stages while motors descend to silence', (context) => {
+  const { audio, output } = setup(context)
+  const beforeOscillators = output.oscillators.length
+  const beforeSources = output.sources.length
+  audio.effect('win')
+  const motors = output.oscillators
+    .slice(beforeOscillators)
+    .filter((source) => source.stopped - source.started > 1.5)
+  assert.ok(motors.length >= 2)
+  for (const motor of motors) {
+    const start = motor.frequency.events.find((event) => event.type === 'set')!
+    const end = motor.frequency.events.find(
+      (event) => event.type === 'exponential'
+    )!
+    assert.ok(end.value < start.value)
+    assert.ok(motor.stopped < 2.1)
+  }
+  const relays = output.sources
+    .slice(beforeSources)
+    .filter(
+      (source) => source.started > 0.2 && source.stopped - source.started < 0.2
+    )
+  assert.ok(new Set(relays.map((source) => source.started)).size >= 3)
+  audio.finish()
+  context.mock.timers.tick(1900)
+  assert.equal(output.state, 'running')
+  context.mock.timers.tick(350)
+  assert.equal(output.state, 'suspended')
+})
+
 void test('resume cancels terminal suspension; disposal disconnects every live graph node', (context) => {
   const { audio, output } = setup(context)
   audio.effect('shot', 1)
@@ -1624,6 +1654,76 @@ void test('menu music suspends for gameplay and hidden tabs; returning never sta
   assert.equal(output.state, 'closed')
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
   assert.ok(output.sources.every((source) => source.stopCalls > 0))
+})
+
+void test('victory menu effects wake without reviving the score, and gameplay remains silent', (context) => {
+  const state = setupMenu(context)
+  state.audio.cue('confirm')
+  const output = state.output
+  const beforeScore = output.sources.length
+  output.currentTime = 0.3
+  context.mock.timers.tick(80)
+  const scoreVoices = output.sources.slice(beforeScore)
+  assert.ok(scoreVoices.length > 0)
+  const scoreOutput = output.gains.find(
+    (gain) =>
+      gain.connections.has(output.compressors[0]!) &&
+      scoreVoices.every((source) => reaches(source, gain))
+  )!
+  assert.ok(scoreOutput)
+  assert.equal(scoreOutput.gain.value, 1)
+
+  state.audio.setActive(false)
+  assert.equal(output.state, 'suspended')
+  state.audio.setActive(true, { music: false })
+  assert.equal(output.state, 'running')
+  assert.equal(
+    scoreOutput.gain.value,
+    0,
+    'previously suspended chords stay inaudible'
+  )
+  const beforeHover = output.sources.length
+  state.audio.cue('move')
+  const hoverVoices = output.sources.slice(beforeHover)
+  assert.ok(hoverVoices.length > 0)
+  assert.ok(hoverVoices.every((source) => reaches(source, output.destination)))
+  assert.ok(hoverVoices.every((source) => !reaches(source, scoreOutput)))
+  const beforeConfirm = output.sources.length
+  state.audio.cue('confirm')
+  assert.ok(output.sources.length > beforeConfirm)
+  const afterCues = output.sources.length
+  output.currentTime += 5
+  context.mock.timers.tick(5000)
+  assert.equal(
+    output.sources.length,
+    afterCues,
+    'the score schedules no new voices'
+  )
+  assert.equal(scoreOutput.gain.value, 0)
+
+  state.document.hidden = true
+  state.document.dispatchEvent(new Event('visibilitychange'))
+  state.audio.cue('move')
+  assert.equal(output.state, 'suspended')
+  assert.equal(output.sources.length, afterCues)
+  state.document.hidden = false
+  state.document.dispatchEvent(new Event('visibilitychange'))
+  assert.equal(scoreOutput.gain.value, 0)
+  state.audio.setActive(false)
+  state.audio.cue('confirm')
+  assert.equal(output.sources.length, afterCues)
+  assert.equal(output.state, 'suspended')
+
+  state.audio.setActive(true)
+  assert.equal(scoreOutput.gain.value, 1)
+  for (let beat = 0; beat < 8; beat++) {
+    output.currentTime += 0.25
+    context.mock.timers.tick(250)
+  }
+  assert.ok(
+    output.sources.length > afterCues,
+    'the ordinary menu restores music'
+  )
 })
 
 void test('throttled music skips missed beats and rapid menu switches keep a bounded voice pool', (context) => {

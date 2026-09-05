@@ -39,6 +39,7 @@ export type PickupDefinition = Point & {
   amount: number
   weapon?: WeaponId
   ammoPool?: number
+  ammoName?: string
 }
 
 const sectors = {
@@ -502,7 +503,7 @@ const pickup = (
   x: number,
   z: number,
   amount: number,
-  options: { weapon?: WeaponId; ammoPool?: number } = {}
+  options: Pick<PickupDefinition, 'weapon' | 'ammoPool' | 'ammoName'> = {}
 ): PickupDefinition => ({ id, kind, ...at(x, z), amount, ...options })
 const zone = (
   sector: SectorId,
@@ -856,7 +857,10 @@ export const LEVEL = {
     pickup('interp', 'weapon', 21, 45, 110, { weapon: 2, ammoPool: 2 }),
     pickup('opening-grass', 'health', 30, 49, 35),
     pickup('opening-rails', 'armor', 28, 51, 90),
-    pickup('opening-data', 'ammo', 29, 45, 50, { ammoPool: 0 }),
+    pickup('opening-data', 'ammo', 29, 45, 8, {
+      ammoPool: 1,
+      ammoName: 'POSTTRAINING RL'
+    }),
     pickup('feedback-data', 'ammo', 19, 46, 20, { ammoPool: 1 }),
     pickup('feedback-grass', 'health', 18, 47, 40),
     pickup('feedback-rails', 'armor', 19, 40, 65),

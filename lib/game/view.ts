@@ -32,7 +32,7 @@ import { PLAYER_EYE_HEIGHT, type GameWorld, type GameEvent } from './model'
 import { FacilityScenery } from './scenery'
 import { ENEMY_ART, type EnemyArt } from './enemy-art'
 import { pickupTexture, signTexture, surfaceTexture } from './textures'
-import type { EnemyKind } from './types'
+import { SHUTDOWN_FINALE_SECONDS, type EnemyKind } from './types'
 
 const enemyHeight = {
   deception: 2.15,
@@ -117,6 +117,17 @@ export class GameView {
   private readonly textures = new Set<Texture>()
   private readonly particles: Particle[] = []
   private readonly shutdown = new Group()
+  private readonly shutdownLabel: Sprite
+  private readonly shutdownTime = { value: -1 }
+  private readonly shutdownOrigin = {
+    value: new Vector3(LEVEL.shutdown.x, 0, LEVEL.shutdown.z)
+  }
+  private readonly emergency = { value: 0 }
+  private readonly lamps: { mesh: Mesh; glow: Sprite; color: Color }[] = []
+  private readonly reducedMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)'
+  )
+  private shutdownStarted: number | undefined
   private readonly flash = { value: 0 }
   private readonly flashPosition = { value: new Vector3() }
   private readonly flashColor = { value: new Color('#ffb45e') }
@@ -322,6 +333,7 @@ export class GameView {
     )
     label.scale.set(3.8, 1.05, 1)
     label.position.set(LEVEL.shutdown.x, shutdownFloor + 2.45, LEVEL.shutdown.z)
+    this.shutdownLabel = label
     this.scene.add(label)
 
     this.map = document.createElement('canvas')
@@ -385,6 +397,9 @@ export class GameView {
       shader.uniforms.retroBlast = this.blast
       shader.uniforms.retroBlastPosition = this.blastPosition
       shader.uniforms.retroBlastColor = this.blastColor
+      shader.uniforms.retroShutdownTime = this.shutdownTime
+      shader.uniforms.retroShutdownOrigin = this.shutdownOrigin
+      shader.uniforms.retroEmergency = this.emergency
       shader.vertexShader = shader.vertexShader
         .replace(
           '#include <common>',
@@ -397,11 +412,22 @@ export class GameView {
       shader.fragmentShader = shader.fragmentShader
         .replace(
           '#include <common>',
-          '#include <common>\nvarying vec3 retroWorld;\nuniform float retroFlash;\nuniform vec3 retroFlashPosition;\nuniform vec3 retroFlashColor;\nuniform float retroBlast;\nuniform vec3 retroBlastPosition;\nuniform vec3 retroBlastColor;'
+          '#include <common>\nvarying vec3 retroWorld;\nuniform float retroFlash;\nuniform vec3 retroFlashPosition;\nuniform vec3 retroFlashColor;\nuniform float retroBlast;\nuniform vec3 retroBlastPosition;\nuniform vec3 retroBlastColor;\nuniform float retroShutdownTime;\nuniform vec3 retroShutdownOrigin;\nuniform float retroEmergency;'
         )
         .replace(
           '#include <opaque_fragment>',
-          'float flashFalloff = max(0.0, 1.0 - distance(retroWorld, retroFlashPosition) / 11.0);\nfloat blastFalloff = max(0.0, 1.0 - distance(retroWorld, retroBlastPosition) / 15.0);\noutgoingLight += diffuseColor.rgb * (retroFlashColor * retroFlash * flashFalloff * flashFalloff + retroBlastColor * retroBlast * blastFalloff * blastFalloff);\n#include <opaque_fragment>'
+          `float flashFalloff = max(0.0, 1.0 - distance(retroWorld, retroFlashPosition) / 11.0);
+float blastFalloff = max(0.0, 1.0 - distance(retroWorld, retroBlastPosition) / 15.0);
+outgoingLight += diffuseColor.rgb * (retroFlashColor * retroFlash * flashFalloff * flashFalloff + retroBlastColor * retroBlast * blastFalloff * blastFalloff);
+float labDistance = distance(retroWorld.xz, retroShutdownOrigin.xz);
+float emergencyLight = retroEmergency * max(0.0, 1.0 - labDistance / 36.0);
+outgoingLight = mix(outgoingLight, outgoingLight * vec3(2.1, 0.22, 0.12) + vec3(0.045, 0.0, 0.0), emergencyLight);
+if (retroShutdownTime >= 0.0) {
+  float bank = min(6.0, floor(labDistance / 7.0));
+  float disconnected = smoothstep(0.22 + bank * 0.2, 0.31 + bank * 0.2, retroShutdownTime);
+  outgoingLight *= mix(1.0, 0.025, disconnected) * (1.0 - smoothstep(1.5, 2.05, retroShutdownTime));
+}
+#include <opaque_fragment>`
         )
     }
     return material
@@ -668,6 +694,7 @@ export class GameView {
           Math.max(decoration.width, decoration.height, 0.6) * 2.5
         )
         this.scene.add(glow)
+        this.lamps.push({ mesh, glow, color: new Color(decoration.color) })
       }
     }
   }
@@ -678,7 +705,11 @@ export class GameView {
   }
 
   handleEvent(event: GameEvent) {
-    if (event.type === 'pickup') {
+    if (event.type === 'win') {
+      this.shutdownStarted ??= performance.now()
+      this.mapOpen = false
+      this.map.style.display = 'none'
+    } else if (event.type === 'pickup') {
       this.pickupGlow = 0.14
     } else if (event.type === 'impact') {
       const position = new Vector3(event.x, event.y, event.z)
@@ -780,6 +811,19 @@ export class GameView {
   render(dt: number) {
     const world = this.world
     const player = world.player
+    if (world.phase === 'won') this.shutdownStarted ??= performance.now()
+    const shutdownElapsed =
+      this.shutdownStarted === undefined
+        ? -1
+        : this.reducedMotion.matches
+          ? SHUTDOWN_FINALE_SECONDS
+          : (performance.now() - this.shutdownStarted) / 1000
+    this.shutdownTime.value = shutdownElapsed
+    this.emergency.value =
+      world.bossEnraged && !world.bossDefeated
+        ? 0.54 +
+          (this.reducedMotion.matches ? 0 : Math.sin(world.time * 2.4) * 0.13)
+        : 0
     const moved = Math.hypot(player.x - this.lastX, player.z - this.lastZ)
     const moving = moved > 0.0005
     this.stride += moved * 1.7
@@ -920,6 +964,23 @@ export class GameView {
       shade.multiplyScalar(alive ? 1.1 : 0.6)
       if (enemy.state === 'hurt') shade.lerp(new Color('#ff7b5b'), 0.7)
       if (attack) shade.lerp(new Color('#db8e68'), 0.2)
+      if (enemy.kind === 'sam' && alive && world.bossEnraged) {
+        const rapidWindup =
+          attack &&
+          !enemy.attackReleased &&
+          enemy.bossVolley?.pattern === 'rapid'
+        shade.lerp(
+          new Color(rapidWindup ? '#ff4a24' : '#e06a48'),
+          rapidWindup
+            ? 0.7 +
+                (this.reducedMotion.matches
+                  ? 0
+                  : Math.sin(world.time * 15) * 0.2)
+            : 0.22
+        )
+      }
+      if (shutdownElapsed >= 0)
+        shade.multiplyScalar(Math.max(0, 1 - shutdownElapsed / 1.5))
       sprite.material.color.copy(shade)
       sprite.material.opacity = 1
       const shadow = this.shadows.get(enemy.id)!
@@ -1042,10 +1103,45 @@ export class GameView {
           (1 - progress) * 1.2
       }
     }
-    this.scenery.update(world.time)
+    this.scenery.update(world.time, shutdownElapsed, this.emergency.value)
     this.scene.backgroundRotation.y = world.time * 0.0012
+    if (shutdownElapsed >= 0)
+      this.scene.backgroundIntensity =
+        0.72 * Math.max(0, 1 - shutdownElapsed / 1.7)
+    if (this.scene.fog instanceof Fog)
+      this.scene.fog.color.set(
+        shutdownElapsed >= 0
+          ? '#030204'
+          : this.emergency.value > 0
+            ? '#220708'
+            : '#100d17'
+      )
+    let poweredLamps = 0
+    for (const lamp of this.lamps) {
+      const distance = Math.hypot(
+        lamp.mesh.position.x - LEVEL.shutdown.x,
+        lamp.mesh.position.z - LEVEL.shutdown.z
+      )
+      const cutoff = 0.22 + Math.min(6, Math.floor(distance / 7)) * 0.2
+      const power =
+        shutdownElapsed < 0
+          ? 1
+          : Math.max(0, 1 - Math.max(0, shutdownElapsed - cutoff) / 0.09)
+      const alarm = this.emergency.value * Math.max(0, 1 - distance / 36)
+      const material = lamp.mesh.material as MeshBasicMaterial
+      material.color
+        .copy(lamp.color)
+        .lerp(new Color('#ff251b'), alarm)
+        .multiplyScalar(power)
+      lamp.glow.material.color.copy(material.color)
+      lamp.glow.material.opacity = 0.22 * power
+      if (power > 0.01) poweredLamps++
+    }
     const shutdownButton = this.shutdown.children[1] as Mesh
-    shutdownButton.position.y = world.phase === 'won' ? 1.18 : 1.36
+    shutdownButton.position.y =
+      shutdownElapsed >= 0
+        ? 1.36 - Math.min(1, shutdownElapsed / 0.14) * 0.16
+        : 1.36
     ;(shutdownButton.material as MeshBasicMaterial).color.set(
       world.phase === 'won'
         ? '#6c2319'
@@ -1053,6 +1149,24 @@ export class GameView {
           ? '#ff7950'
           : '#ed3d25'
     )
+    const controlPower =
+      shutdownElapsed < 0
+        ? 1
+        : Math.max(0.025, 1 - Math.max(0, shutdownElapsed - 0.35) / 1.35)
+    ;(shutdownButton.material as MeshBasicMaterial).color.multiplyScalar(
+      controlPower
+    )
+    for (let index = 2; index < this.shutdown.children.length; index++) {
+      const part = this.shutdown.children[index] as Mesh
+      ;(part.material as MeshBasicMaterial).color
+        .set(index === 2 ? '#b99953' : '#9b9689')
+        .multiplyScalar(controlPower)
+    }
+    this.shutdownLabel.material.opacity = controlPower
+    this.canvas.dataset.shutdownElapsed = shutdownElapsed.toFixed(3)
+    this.canvas.dataset.poweredLamps = String(poweredLamps)
+    this.canvas.dataset.shutdownButton = shutdownButton.position.y.toFixed(3)
+    this.canvas.dataset.bossEnraged = String(world.bossEnraged)
     this.renderer.render(this.scene, this.camera)
     const column = Math.floor(player.x / CELL)
     const row = Math.floor(player.z / CELL)

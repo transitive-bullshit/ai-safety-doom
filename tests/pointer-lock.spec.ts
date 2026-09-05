@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { initialSnapshot } from '../lib/game/types'
 
 const canvas = 'canvas[data-testid="game-canvas"]'
-const readAmmo = async (page: Page) =>
-  Number(await page.getByTestId('hud-ammo').textContent())
+const readShots = async (page: Page) =>
+  Number(await page.locator(canvas).getAttribute('data-shot'))
 const isLocked = (page: Page) =>
   page.evaluate(() => document.pointerLockElement?.tagName === 'CANVAS')
 
@@ -15,11 +14,11 @@ async function begin(page: Page) {
 }
 
 async function expectReleased(page: Page) {
-  // The HUD publishes at 100ms intervals; sample after it catches the release.
+  // Allow the next simulation frame to consume the release before sampling.
   await page.waitForTimeout(150)
-  const afterRelease = await readAmmo(page)
+  const afterRelease = await readShots(page)
   await page.waitForTimeout(850)
-  expect(await readAmmo(page)).toBe(afterRelease)
+  expect(await readShots(page)).toBe(afterRelease)
 }
 
 test.beforeEach(async ({ page }) => {
@@ -95,25 +94,25 @@ test('capturing on entry and resume does not fire; held mouse fire stops after r
   page
 }) => {
   await begin(page)
-  const initialAmmo = initialSnapshot(1).ammo
+  const initialShots = 0
   await page.getByTestId('start-game').click()
   await expect.poll(() => isLocked(page)).toBe(true)
   await expectReleased(page)
-  expect(await readAmmo(page)).toBe(initialAmmo)
+  expect(await readShots(page)).toBe(initialShots)
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const before = await readAmmo(page)
+    const before = await readShots(page)
     await page.mouse.down()
-    await expect.poll(() => readAmmo(page)).toBeLessThan(before)
+    await expect.poll(() => readShots(page)).toBeGreaterThan(before)
     if (attempt === 0) {
-      const whileHeld = await readAmmo(page)
+      const whileHeld = await readShots(page)
       const box = await page.locator(canvas).boundingBox()
       expect(box).not.toBeNull()
       await page.mouse.move(
         box!.x + box!.width / 2 + 12,
         box!.y + box!.height / 2
       )
-      await expect.poll(() => readAmmo(page)).toBeLessThan(whileHeld)
+      await expect.poll(() => readShots(page)).toBeGreaterThan(whileHeld)
     }
     await page.mouse.up()
     await expectReleased(page)
@@ -124,14 +123,14 @@ test('capturing on entry and resume does not fire; held mouse fire stops after r
     'data-phase',
     'paused'
   )
-  const pausedAmmo = await readAmmo(page)
+  const pausedShots = await readShots(page)
   await page.getByTestId('resume-game').click()
   await expect.poll(() => isLocked(page)).toBe(true)
   await expectReleased(page)
-  expect(await readAmmo(page)).toBe(pausedAmmo)
-  const before = await readAmmo(page)
+  expect(await readShots(page)).toBe(pausedShots)
+  const before = await readShots(page)
   await page.mouse.down()
-  await expect.poll(() => readAmmo(page)).toBeLessThan(before)
+  await expect.poll(() => readShots(page)).toBeGreaterThan(before)
   await page.mouse.up()
   await expectReleased(page)
 })
@@ -163,11 +162,11 @@ test('a released capture click does not leave firing latched when initial captur
   const box = await page.locator(canvas).boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
-  const beforeCapture = await readAmmo(page)
+  const beforeCapture = await readShots(page)
   await page.mouse.down()
   await expect.poll(() => isLocked(page)).toBe(true)
   await page.waitForTimeout(650)
-  expect(await readAmmo(page)).toBe(beforeCapture)
+  expect(await readShots(page)).toBe(beforeCapture)
   await page.mouse.up()
   await expectReleased(page)
 })
@@ -209,9 +208,9 @@ test('a buttonless mouse move clears firing when capture swallowed the release e
     ).__pointerFault
     fault.swallowNextMouseup = true
   })
-  const before = await readAmmo(page)
+  const before = await readShots(page)
   await page.mouse.down()
-  await expect.poll(() => readAmmo(page)).toBeLessThan(before)
+  await expect.poll(() => readShots(page)).toBeGreaterThan(before)
   await page.mouse.up()
   await page.mouse.move(box!.x + box!.width / 2 + 3, box!.y + box!.height / 2)
   await expectReleased(page)
@@ -236,9 +235,9 @@ test('permanently denied pointer capture retains hold-to-fire and release fallba
   const box = await page.locator(canvas).boundingBox()
   expect(box).not.toBeNull()
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
-  const before = await readAmmo(page)
+  const before = await readShots(page)
   await page.mouse.down()
-  await expect.poll(() => readAmmo(page)).toBeLessThan(before)
+  await expect.poll(() => readShots(page)).toBeGreaterThan(before)
   expect(await isLocked(page)).toBe(false)
   await page.mouse.up()
   await expectReleased(page)

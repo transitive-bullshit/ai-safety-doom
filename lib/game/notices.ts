@@ -11,15 +11,15 @@ export class GameNotices {
   private featured: TimedNotice[] = []
   private kills: TimedNotice[] = []
 
-  add(input: Omit<GameNotice, 'id'>) {
+  add(input: Omit<GameNotice, 'id'>, { interrupt = false } = {}) {
     const entry = {
       notice: { ...input, id: ++this.nextId },
       remaining: NOTICE_SECONDS[input.kind]
     }
     if (input.kind === 'kill') {
       this.kills = [...this.kills.slice(-(MAX_KILLS - 1)), entry]
-    } else if (input.kind === 'weapon') {
-      // Announce the new argument immediately, then resume interrupted pickups.
+    } else if (input.kind === 'weapon' || interrupt) {
+      // Urgent incidents and new arguments appear now, then the interrupted joke resumes.
       this.featured = [entry, ...this.featured].slice(0, MAX_FEATURED)
     } else if (this.featured.length < MAX_FEATURED) {
       this.featured.push(entry)

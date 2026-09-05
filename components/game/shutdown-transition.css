@@ -1,0 +1,68 @@
+.shutdown-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+}
+.shutdown-veil {
+  position: absolute;
+  inset: 0;
+  background: #030204;
+  opacity: 0;
+  animation: shutdown-to-black var(--shutdown-duration) linear both;
+}
+.shutdown-transition .game-overlay {
+  background: transparent;
+}
+.shutdown-result {
+  min-height: min(420px, 100%);
+  justify-content: center;
+}
+.shutdown-actions {
+  min-height: 216px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.shutdown-payoff-slot {
+  min-height: 58px;
+}
+.shutdown-title,
+.shutdown-payoff-slot > p {
+  animation: shutdown-text 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.session-active[data-phase='won'] .weapon-position {
+  opacity: 0;
+  transition: opacity 180ms linear;
+}
+@keyframes shutdown-to-black {
+  0%,
+  57% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes shutdown-text {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shutdown-veil {
+    animation: none;
+    opacity: 1;
+  }
+  .shutdown-title,
+  .shutdown-payoff-slot > p {
+    animation: none;
+  }
+  .session-active[data-phase='won'] .weapon-position {
+    transition: none;
+  }
+}

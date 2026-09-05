@@ -624,7 +624,14 @@ void test('every enemy attack emits once at release; dodged swipes sound and occ
       }
       if (!interrupted) {
         if (kind === 'sycophant') assert.ok(world.player.health < before)
-        else assert.ok(world.projectiles.length > 0)
+        else {
+          assert.ok(world.projectiles.length > 0)
+          assert.ok(
+            world.projectiles.every(
+              (projectile) => projectile.enemyKind === attacks[0]!.kind
+            )
+          )
+        }
       } else {
         assert.equal(world.player.health, before)
         assert.equal(world.projectiles.length, 0)
@@ -902,7 +909,7 @@ void test('pickups clamp each resource, unlock weapons, and apply only once', ()
     placePlayer(world, source)
     world.player.health = 99
     world.player.armor = 199
-    world.player.ammo = AMMO_LIMITS.map((limit) => limit - 1)
+    world.player.ammo = AMMO_LIMITS.map((limit) => Math.max(0, limit - 1))
     world.pickups = [{ ...source, collected: false }]
     world.step(1 / 60, idle)
     assert.ok(world.pickups[0]!.collected)
@@ -978,7 +985,7 @@ void test('full resources and duplicate weapons stay uncollected and silent, whi
   assert.equal(events[0]!.weapon, source.weapon)
 })
 
-void test('every weapon consumes its own ammo cost, respects cadence, and cannot fire empty', () => {
+void test('weapons respect cadence and their ammunition costs, including a free pistol', () => {
   for (const weapon of [0, 1, 2, 3] as WeaponId[]) {
     const world = isolatedWorld()
     world.player.owned = [0, 1, 2, 3]
@@ -1020,6 +1027,27 @@ void test('every weapon consumes its own ammo cost, respects cadence, and cannot
     const shots = world.shotCounter
     world.step(1 / 60, { ...idle, fire: true })
     assert.equal(world.player.ammo[pool], 0)
+    assert.equal(world.shotCounter, shots + Number(WEAPON_COST[weapon] === 0))
+  }
+})
+
+void test('the pistol keeps firing with empty reserves on every difficulty without consuming another pool', () => {
+  for (const difficulty of [1, 10, 50, 90, 99] as Difficulty[]) {
+    const world = new GameWorld(difficulty)
+    world.enemies = []
+    world.barrels = []
+    world.pickups = []
+    world.player.ammo = [0, 12, 80]
+    const before = [...world.player.ammo]
+    advance(world, 8, { fire: true })
+    assert.ok(world.shotCounter >= 25 && world.shotCounter <= 30)
+    assert.deepEqual(world.player.ammo, before)
+    assert.equal(world.player.weapon, 0)
+    const snapshot = world.snapshot()
+    assert.ok(snapshot.ammoPools.every(Number.isFinite))
+    assert.deepEqual(JSON.parse(JSON.stringify(snapshot)).ammoPools, before)
+    const shots = world.shotCounter
+    advance(world, 1)
     assert.equal(world.shotCounter, shots)
   }
 })

@@ -22,9 +22,10 @@ import type {
 import { ENEMY_NAMES, SHUTDOWN_CHARGE_SECONDS, WEAPONS } from './types'
 import { GameNotices } from './notices'
 
-export const AMMO_LIMITS = [300, 80, 400]
+// Pool zero is retained for stable weapon indexing; the pistol needs no reserve.
+export const AMMO_LIMITS = [0, 80, 400]
 export const WEAPON_POOL = [0, 1, 2, 2] as const
-export const WEAPON_COST = [1, 1, 1, 40] as const
+export const WEAPON_COST = [0, 1, 1, 40] as const
 export const PLAYER_RADIUS = 0.38
 export const PLAYER_WALK_SPEED = 7.4
 export const PLAYER_RUN_SPEED = 10.2
@@ -104,7 +105,7 @@ const ENEMY_STATS = {
     interval: 2.9,
     damage: 18
   },
-  sam: { health: 1050, radius: 1.25, speed: 1.5, interval: 1.8, damage: 28 }
+  sam: { health: 1250, radius: 1.25, speed: 1.5, interval: 1.8, damage: 28 }
 } as const
 
 export const ENEMY_HEIGHT = {
@@ -129,6 +130,11 @@ export interface Enemy extends Point3 {
   grounded: boolean
   attackReleased: boolean
   painUntil: number
+  bossVolley?: {
+    pattern: 'wide' | 'rapid'
+    shotsFired: number
+    target: Point3 | null
+  }
 }
 
 export type Pickup = PickupDefinition & { collected: boolean }
@@ -138,6 +144,8 @@ export interface Projectile extends Point3 {
   dz: number
   kind: 'plasma' | 'shutdown' | 'enemy' | 'rocket'
   owner: 'player' | 'enemy'
+  /** Firing identity for presentation; kind still controls collision and damage. */
+  enemyKind?: EnemyKind
   life: number
   vy: number
 }
@@ -227,7 +235,7 @@ export class GameWorld {
     armor: 0,
     weapon: 0 as WeaponId,
     owned: [0] as WeaponId[],
-    ammo: [80, 0, 0],
+    ammo: [0, 0, 0],
     cooldown: 0
   }
   enemies: Enemy[]
@@ -246,6 +254,7 @@ export class GameWorld {
   message = 'THEY BUILT A GOD. YOU BROUGHT A SHOTGUN'
   prompt = ''
   bossDefeated = false
+  bossEnraged = false
   /** Public for a visible charging effect. Null means no charged shot pending. */
   shutdownCharge: number | null = null
   private messageTime = 6
@@ -256,6 +265,7 @@ export class GameWorld {
   private navigation = new Map<string, number>()
   private navigationTime = 0
   private navigationCell = ''
+  private nextBossVolley: 'wide' | 'rapid' = 'rapid'
 
   constructor(difficulty: Difficulty) {
     this.difficulty = difficulty
@@ -636,6 +646,7 @@ export class GameWorld {
       this.updateEnemy(enemy, dt)
     }
     this.updateProjectiles(dt)
+    this.updateBossPhase()
   }
 
   private say(message: string, seconds = 3) {
@@ -687,7 +698,7 @@ export class GameWorld {
         this.notices.add({
           kind: 'pickup',
           subject: pickup.id,
-          title: `MORE ${names[pool]}`,
+          title: `MORE ${pickup.ammoName ?? names[pool]}`,
           detail: 'Surely this will help'
         })
       }
@@ -994,6 +1005,24 @@ export class GameWorld {
     }
   }
 
+  private updateBossPhase() {
+    if (this.bossEnraged || this.bossDefeated || this.phase !== 'playing')
+      return
+    const boss = this.enemies.find((enemy) => enemy.kind === 'sam')
+    if (!boss || boss.health <= 0 || boss.health > boss.maxHealth * 0.5) return
+    // Resolve the whole damage batch first: a lethal blast never announces enrage.
+    this.bossEnraged = true
+    this.notices.add(
+      {
+        kind: 'event',
+        subject: 'boss-enraged',
+        title: 'WE’RE SHIPPING ANYWAY',
+        detail: 'Emergency deployment protocol engaged'
+      },
+      { interrupt: true }
+    )
+  }
+
   private damagePlayer(amount: number) {
     if (this.phase !== 'playing') return
     const damage = amount * this.settings.incomingDamage
@@ -1183,33 +1212,64 @@ export class GameWorld {
       enemy.stateTime < (enemy.kind === 'sam' ? 0.035 : 0.12)
     )
       return
-    const windup =
-      enemy.kind === 'sam' ? 0.48 : enemy.kind === 'sycophant' ? 0.26 : 0.38
+    const rapid =
+      enemy.kind === 'sam' && enemy.bossVolley?.pattern === 'rapid'
+        ? enemy.bossVolley
+        : null
+    const spacing = this.difficulty <= 10 ? 0.15 : 0.13
+    const windup = rapid
+      ? this.difficulty <= 10
+        ? 0.66
+        : 0.58
+      : enemy.kind === 'sam'
+        ? 0.48
+        : enemy.kind === 'sycophant'
+          ? 0.26
+          : 0.38
     if (enemy.state === 'attack') {
       if (!enemy.attackReleased && enemy.stateTime >= windup) {
         enemy.attackReleased = true
         // A committed swipe still sounds when dodged; occluded volleys cancel.
-        if (visible || enemy.kind === 'sycophant') {
-          this.events.push({
-            type: 'enemy',
-            kind: enemy.kind,
-            enemyId: enemy.id,
-            distance: separation,
-            x: enemy.x,
-            y: enemy.y + ENEMY_HEIGHT[enemy.kind] * 0.55,
-            z: enemy.z
-          })
-        }
+        if (visible || enemy.kind === 'sycophant')
+          this.enemyAttackCue(enemy, separation)
         if (visible) {
           if (
             separation < (enemy.kind === 'sam' ? 2.8 : 1.65) &&
             Math.abs(enemy.y - this.player.y) < 1.2
-          )
+          ) {
             this.damagePlayer(stats.damage)
-          else if (enemy.kind !== 'sycophant') this.enemyVolley(enemy)
+            if (rapid) rapid.shotsFired = 3
+          } else if (rapid) {
+            // Commit the aim on release, so a sidestep evades the entire burst.
+            rapid.target = {
+              x: this.player.x,
+              y: this.player.y + 1.05,
+              z: this.player.z
+            }
+            rapid.shotsFired = 1
+            this.enemyVolley(enemy, [0], rapid.target)
+          } else if (enemy.kind !== 'sycophant') this.enemyVolley(enemy)
+        } else if (rapid) rapid.shotsFired = 3
+      }
+      if (
+        rapid?.target &&
+        rapid.shotsFired < 3 &&
+        enemy.stateTime >= windup + rapid.shotsFired * spacing
+      ) {
+        if (visible) {
+          this.enemyAttackCue(enemy, separation)
+          this.enemyVolley(
+            enemy,
+            [rapid.shotsFired === 1 ? -0.035 : 0.035],
+            rapid.target
+          )
+          rapid.shotsFired++
+        } else {
+          // Cover or an interrupted attack cancels the remaining shots.
+          rapid.shotsFired = 3
         }
       }
-      if (enemy.stateTime < windup + 0.2) return
+      if (enemy.stateTime < windup + (rapid ? spacing * 2 : 0) + 0.2) return
     }
     const melee =
       separation < (enemy.kind === 'sam' ? 2.8 : 1.65) &&
@@ -1223,6 +1283,12 @@ export class GameWorld {
       enemy.stateTime = 0
       enemy.cooldown = stats.interval / this.settings.attackRate
       enemy.attackReleased = false
+      if (enemy.kind === 'sam') {
+        const pattern = this.bossEnraged ? this.nextBossVolley : 'wide'
+        enemy.bossVolley = { pattern, shotsFired: 0, target: null }
+        if (this.bossEnraged)
+          this.nextBossVolley = pattern === 'rapid' ? 'wide' : 'rapid'
+      }
       return
     }
     enemy.state = 'move'
@@ -1235,17 +1301,31 @@ export class GameWorld {
     }
   }
 
-  private enemyVolley(enemy: Enemy) {
-    const angle = Math.atan2(
-      -(this.player.x - enemy.x),
-      -(this.player.z - enemy.z)
-    )
+  private enemyAttackCue(enemy: Enemy, separation: number) {
+    this.events.push({
+      type: 'enemy',
+      kind: enemy.kind,
+      enemyId: enemy.id,
+      distance: separation,
+      x: enemy.x,
+      y: enemy.y + ENEMY_HEIGHT[enemy.kind] * 0.55,
+      z: enemy.z
+    })
+  }
+
+  private enemyVolley(
+    enemy: Enemy,
+    spread?: readonly number[],
+    target: Point3 = { ...this.player, y: this.player.y + 1.05 }
+  ) {
+    const angle = Math.atan2(-(target.x - enemy.x), -(target.z - enemy.z))
     const offsets =
-      enemy.kind === 'sam'
+      spread ??
+      (enemy.kind === 'sam'
         ? [-0.17, 0, 0.17]
         : enemy.kind === 'paperclip'
           ? [-0.055, 0.055]
-          : [0]
+          : [0])
     for (const offset of offsets) {
       const ray = direction(angle + offset)
       const speed = (enemy.kind === 'sam' ? 11 : 8.4) * this.settings.speed
@@ -1255,14 +1335,12 @@ export class GameWorld {
         x: enemy.x,
         z: enemy.z,
         y,
-        vy:
-          ((this.player.y + 1.05 - y) /
-            Math.max(0.1, distance(enemy, this.player))) *
-          speed,
+        vy: ((target.y - y) / Math.max(0.1, distance(enemy, target))) * speed,
         dx: ray.x * speed,
         dz: ray.z * speed,
         kind: enemy.kind === 'sam' ? 'rocket' : 'enemy',
         owner: 'enemy',
+        enemyKind: enemy.kind,
         life: 7
       })
     }

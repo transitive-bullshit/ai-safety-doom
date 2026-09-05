@@ -82,3 +82,18 @@ void test('elapsed-time overflow advances queued notices and invalid time leaves
   feed.step(NOTICE_SECONDS.event + NOTICE_SECONDS.pickup)
   assert.deepEqual(feed.snapshot(), [])
 })
+
+void test('an urgent incident interrupts a weapon discovery and preserves its remaining reading time', () => {
+  const feed = new GameNotices()
+  feed.add(notice('weapon', 'weapon'))
+  feed.step(2)
+  feed.add(notice('pickup', 'queued-pickup'))
+  feed.add(notice('event', 'incident'), { interrupt: true })
+  assert.equal(feed.snapshot()[0]!.subject, 'incident')
+  feed.step(NOTICE_SECONDS.event)
+  assert.equal(feed.snapshot()[0]!.subject, 'weapon')
+  feed.step(NOTICE_SECONDS.weapon - 2)
+  assert.equal(feed.snapshot()[0]!.subject, 'queued-pickup')
+  feed.step(NOTICE_SECONDS.pickup)
+  assert.deepEqual(feed.snapshot(), [])
+})
