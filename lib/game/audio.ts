@@ -478,6 +478,11 @@ export class GameAudio {
       Math.max(0.0002, volume * (sound.level ?? 1)),
       time + (sound.attack ?? 0.006)
     )
+    if (sound.hold !== undefined)
+      gain.gain.setValueAtTime(
+        Math.max(0.0002, volume * (sound.level ?? 1)),
+        time + sound.hold
+      )
     gain.gain.exponentialRampToValueAtTime(0.0001, time + duration)
     source.connect(throat)
     throat.connect(grit)
@@ -635,25 +640,21 @@ export class GameAudio {
   ) {
     const sound: Sound = { rough: true, wet: 0.13 }
     if (detail.pickupKind === 'health') {
-      // Torn grass, a pressure release and a short restorative breath.
-      this.burst(0.12, 0.24, 2300, time, sound, 'bandpass')
+      // A medical pressure seal: firm engagement, relief, and a settled low hum.
+      this.burst(0.045, 0.42, 2300, time, sound, 'bandpass')
       this.burst(
-        0.42,
-        0.32,
-        850,
-        time + 0.035,
-        { ...sound, attack: 0.06, filterEnd: 470 },
+        0.29,
+        0.4,
+        1350,
+        time + 0.025,
+        { wet: 0.1, attack: 0.012, hold: 0.1, filterEnd: 550 },
         'bandpass'
       )
-      this.rasp(
-        83,
-        89,
-        0.3,
-        0.13,
-        time + 0.025,
-        { ...sound, attack: 0.045 },
-        350
-      )
+      this.tone(94, 94, 0.22, 0.28, 'sine', time + 0.04, {
+        attack: 0.018,
+        wet: 0.08
+      })
+      this.burst(0.055, 0.3, 1100, time + 0.2, sound)
     } else if (detail.pickupKind === 'armor') {
       // Weight first, then the unmistakable second steel locking strike.
       this.burst(0.09, 0.38, 1700, time, sound)
@@ -699,21 +700,22 @@ export class GameAudio {
         680
       )
     } else {
-      // Three crunchy tape/head transfers; data is machinery, not a UI chirp.
-      const pitch = 173 + clamp(finite(detail.ammoPool, 0), 0, 2) * 38
-      for (let packet = 0; packet < 3; packet++) {
-        const when = time + packet * 0.055
-        this.burst(
-          0.032,
-          0.27,
-          2200 + packet * 170,
-          when,
-          { ...sound, wet: 0.05 },
-          'bandpass'
-        )
-        this.rasp(pitch, pitch * 0.94, 0.047, 0.14, when, { wet: 0.05 }, 1100)
-      }
-      this.burst(0.075, 0.15, 720, time + 0.165, sound)
+      // A data cartridge slams home, ratchets, and locks into the receiver.
+      const pool = clamp(finite(detail.ammoPool, 0), 0, 2)
+      const pitch = 118 + pool * 31
+      this.burst(0.06, 0.58, 2100, time, sound, 'bandpass')
+      this.rasp(pitch, pitch * 0.92, 0.15, 0.3, time, sound, 800 + pool * 260)
+      this.burst(0.045, 0.4, 3900, time + 0.095, sound, 'bandpass')
+      this.burst(0.08, 0.38, 740, time + 0.12, sound)
+      this.rasp(
+        209 + pool * 47,
+        198 + pool * 47,
+        0.07,
+        0.22,
+        time + 0.095,
+        sound,
+        1700
+      )
     }
   }
 
@@ -935,36 +937,152 @@ export class GameAudio {
     )
   }
 
-  private shutdownBlast(time: number) {
-    // The discharge has an immediate arc crack and a held, chesty explosion.
-    // Gain stays local: other weapons, player vocals, and music keep their mix.
-    this.burst(0.07, 0.7, 6900, time, { hold: 0.012, wet: 0.1 })
-    this.burst(0.88, 0.88, 1850, time, {
-      rough: true,
-      attack: 0.005,
-      hold: 0.14,
-      filterEnd: 270,
-      wet: 0.3
+  private plasmaPulse(time: number) {
+    // A hard arc, held electrical body and short punch resolve before 110 ms.
+    this.burst(0.03, 0.75, 6800, time, {
+      attack: 0.001,
+      hold: 0.007,
+      wet: 0.06
     })
-    this.tone(82, 24, 0.78, 0.62, 'sine', time, { wet: 0.2 })
-    this.rasp(126, 58, 0.82, 0.46, time + 0.015, { wet: 0.25 }, 630)
-    this.burst(0.48, 0.38, 580, time + 0.07, {
+    this.burst(
+      0.095,
+      0.68,
+      1750,
+      time,
+      {
+        rough: true,
+        attack: 0.001,
+        hold: 0.032,
+        filterEnd: 1300,
+        wet: 0.08
+      },
+      'bandpass'
+    )
+    this.rasp(181, 165, 0.082, 0.48, time, { attack: 0.001, wet: 0.06 }, 1900)
+    this.tone(105, 64, 0.09, 0.48, 'triangle', time, {
+      attack: 0.001,
+      wet: 0.05
+    })
+    this.burst(0.026, 0.27, 3400, time + 0.05, { wet: 0.08 }, 'bandpass')
+  }
+
+  private shutdownCharge(time: number) {
+    const duration = SHUTDOWN_CHARGE_SECONDS
+    // Rising current stays near its peak until the projectile actually releases.
+    this.burst(0.04, 0.4, 2000, time, { rough: true, wet: 0.1 })
+    this.rasp(
+      63,
+      230,
+      duration,
+      0.58,
+      time,
+      {
+        attack: duration * 0.76,
+        hold: duration - 0.015,
+        wet: 0.22
+      },
+      850
+    )
+    this.burst(
+      duration,
+      0.58,
+      850,
+      time,
+      {
+        rough: true,
+        filterEnd: 4200,
+        attack: duration * 0.8,
+        hold: duration - 0.015,
+        wet: 0.22
+      },
+      'bandpass'
+    )
+    this.rasp(
+      42,
+      105,
+      duration,
+      0.42,
+      time,
+      {
+        attack: duration * 0.86,
+        hold: duration - 0.015,
+        wet: 0.16
+      },
+      310
+    )
+    for (const [fraction, volume, frequency] of [
+      [0.22, 0.2, 1700],
+      [0.54, 0.3, 2300],
+      [0.85, 0.45, 3200]
+    ] as const)
+      this.burst(
+        0.052,
+        volume,
+        frequency,
+        time + duration * fraction,
+        { rough: true, wet: 0.13 },
+        'bandpass'
+      )
+  }
+
+  private shutdownBlast(time: number) {
+    // A slowed recorded impulse supplies physical weight beneath the reactor blast.
+    const buffer = this.samples.pistol
+    if (buffer) {
+      const ctx = this.context!
+      const source = ctx.createBufferSource()
+      const gain = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+      source.buffer = buffer
+      source.playbackRate.value = 0.58
+      filter.type = 'lowpass'
+      filter.frequency.value = 3200
+      gain.gain.value = 1.2
+      source.connect(filter)
+      filter.connect(gain)
+      const end = time + buffer.duration / source.playbackRate.value
+      this.route(source, gain, [filter], end, { wet: 0.28 })
+      source.start(time)
+      source.stop(end)
+    }
+    this.burst(0.095, 0.9, 6900, time, { hold: 0.018, wet: 0.16 })
+    this.burst(1.2, 1.2, 2200, time, {
       rough: true,
-      hold: 0.13,
-      filterEnd: 190,
-      wet: 0.32
+      attack: 0.004,
+      hold: 0.26,
+      filterEnd: 230,
+      wet: 0.36
+    })
+    this.tone(64, 19, 1.05, 0.85, 'sine', time, { wet: 0.25 })
+    this.rasp(
+      126,
+      44,
+      1.15,
+      0.66,
+      time + 0.015,
+      {
+        hold: 0.2,
+        wet: 0.32
+      },
+      630
+    )
+    this.burst(0.72, 0.58, 580, time + 0.09, {
+      rough: true,
+      hold: 0.24,
+      filterEnd: 150,
+      wet: 0.38
     })
     for (const [delay, volume, frequency] of [
-      [0.055, 0.34, 3600],
-      [0.14, 0.28, 2900],
-      [0.27, 0.2, 2300]
-    ])
+      [0.075, 0.42, 3600],
+      [0.21, 0.34, 2900],
+      [0.41, 0.27, 2300]
+    ] as const)
       this.burst(
-        0.11,
-        volume!,
-        frequency!,
-        time + delay!,
-        { rough: true, wet: 0.26 },
+        0.14,
+        volume,
+        frequency,
+        time + delay,
+        { rough: true, wet: 0.3 },
         'bandpass'
       )
   }
@@ -1075,39 +1193,14 @@ export class GameAudio {
       rough: true
     }
     if (type === 'charge') {
-      this.rasp(
-        58,
-        97,
-        SHUTDOWN_CHARGE_SECONDS,
-        0.3,
-        time,
-        { attack: 0.04 },
-        480
-      )
-      this.burst(
-        SHUTDOWN_CHARGE_SECONDS,
-        0.22,
-        630,
-        time,
-        { rough: true, filterEnd: 1400, attack: 0.09 },
-        'bandpass'
-      )
+      this.shutdownCharge(time)
     } else if (type === 'shot') {
       if (weapon === 0) {
         this.pistolShot(time)
       } else if (weapon === 1) {
         if (!this.recordedShotgun(time)) this.shotgunBlast(time)
       } else if (weapon === 2) {
-        this.rasp(271, 233, 0.12, 0.24, time, { wet: 0.1 }, 1250)
-        this.burst(
-          0.045,
-          0.27,
-          2400,
-          time,
-          { rough: true, wet: 0.06 },
-          'bandpass'
-        )
-        this.burst(0.12, 0.2, 540, time, { rough: true })
+        this.plasmaPulse(time)
       } else {
         this.shutdownBlast(time)
       }

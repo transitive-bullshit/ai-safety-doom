@@ -600,6 +600,82 @@ void test('rapid pistol reports stay bounded, remain muted through pause and res
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
 })
 
+void test('plasma has an immediate crack, a held pulse body and a short delayed arc that settles before the next shot', (context) => {
+  const { audio, output } = setup(context)
+  output.currentTime = 2
+  const before = output.sources.length
+  const gainStart = output.gains.length
+  audio.effect('shot', 2)
+  const pulse = output.sources.slice(before)
+  assert.ok(pulse.length > 1)
+  assert.ok(pulse.some((source) => source.started === output.currentTime))
+  assert.ok(
+    pulse.some((source) => source.started - output.currentTime >= 0.01),
+    'the electrical tail should follow the first impact'
+  )
+  const heldBody = pulse.find((source) => {
+    if (!source.buffer || source.stopped - source.started < 0.06) return false
+    const envelope = output.gains
+      .slice(gainStart)
+      .find((gain) => gain.gain.events.length && reaches(source, gain))
+      ?.gain.events
+    if (!envelope) return false
+    const peak = Math.max(...envelope.map((event) => event.value))
+    return envelope.some(
+      (event) =>
+        event.value >= peak * 0.8 && event.time - source.started >= 0.015
+    )
+  })
+  assert.ok(heldBody, 'rapid fire still needs body beyond the first transient')
+  for (const source of pulse) {
+    assert.ok(source.stopped > source.started)
+    assert.ok(source.stopped - output.currentTime <= 0.115)
+    assert.ok(reaches(source, output.destination))
+    assert.equal(
+      reaches(source, output.destination, output.compressors[0]),
+      false
+    )
+  }
+})
+
+void test('sustained plasma releases each previous pulse, bounds pathological overlap, and preserves mute through pause and resume', (context) => {
+  const { audio, output } = setup(context)
+  const before = output.sources.length
+  const beforeNodes = output.nodes.length
+  audio.setMuted(true)
+  const master = output.gains.find((gain) =>
+    gain.connections.has(output.destination)
+  )!
+  let previous: SourceStub[] = []
+  for (let shot = 0; shot < 80; shot++) {
+    output.currentTime = shot * 0.11
+    const current = output.sources.length
+    audio.effect('shot', 2)
+    assert.ok(previous.every((source) => source.connections.size === 0))
+    previous = output.sources.slice(current)
+  }
+  for (let shot = 0; shot < 100; shot++) audio.effect('shot', 2)
+  const pulses = output.sources.slice(before)
+  assert.ok(pulses.filter((source) => source.connections.size > 0).length <= 64)
+  assert.ok(pulses.some((source) => source.stopCalls > 1))
+  assert.equal(master.gain.value, 0)
+  audio.pause()
+  const pausedCount = output.sources.length
+  audio.effect('shot', 2)
+  context.mock.timers.tick(2000)
+  assert.equal(output.state, 'suspended')
+  assert.equal(output.sources.length, pausedCount)
+  audio.resume()
+  assert.equal(output.sources.length, pausedCount)
+  assert.equal(master.gain.value, 0)
+  for (const source of pulses) source.onended?.()
+  assert.ok(
+    output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0)
+  )
+  audio.dispose()
+  assert.ok(output.nodes.every((node) => node.connections.size === 0))
+})
+
 void test('pickup categories have distinct pitch, envelope and rhythm, and shutdown has a heavier weapon cue', (context) => {
   const { audio, output } = setup(context)
   const capture = (pickupKind: PickupKind, weapon?: 1 | 3, ammoPool = 0) => {

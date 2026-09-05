@@ -16,6 +16,14 @@ Formatting, lint, TypeScript, and all 83 unit tests pass. The unit coverage incl
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
 
+## README, sharing, and dependency cleanup
+
+The README now leads with the existing logo, The Alignment Problem subtitle, and a direct play CTA. Three fresh 1440 × 1000 JPEGs show the arrival platform, paperclip/RLHF encounter, and Sam/shutdown weapon; all four README images link to `https://p-doom.transitivebullsh.it`. Their local paths and link targets were checked, and the screenshots were visually inspected. The captures use normal controls from the current production build; the complete route also defeated Sam and reached shutdown in 110 seconds without page/console errors. README screenshot assets total about 629 KB.
+
+The root layout supplies canonical, Open Graph, and Twitter `summary_large_image` metadata for the production origin and mounts `@vercel/analytics/next` once. `public/social-preview.jpg` is a 1200 × 630 JPEG composed in Chrome from the actual boss screenshot and existing logo, wall texture, and font. The production response serves it as `image/jpeg` (153,181 bytes). Browser checks verify matching page/OG/Twitter titles and descriptions, absolute production URLs, image dimensions, one deferred Analytics script, and one queued pageview, without browser errors. Analytics transport was isolated locally; enable Web Analytics in the Vercel project when deploying, and verify hosted delivery there. Evidence: `/private/tmp/pdoom-production-metadata-proof.json`; the social composition source is `/private/tmp/pdoom-social-preview.mjs`.
+
+Unused `@base-ui/react`, `radix-ui`, and `class-variance-authority` dependencies were removed after checking source, config, scripts, and peer requirements. The pnpm lock update adds no snapshots and changes no retained versions. Formatting, lint, TypeScript, all 83 unit tests, and the combined production build pass.
+
 ## Thicker blood wipe
 
 The death wipe now uses ten broad, overlapping sheets in place of 32 narrow strips. Each sheet spans 15–18% of the frame, with blunt ragged lobes, dark maroon clots, coarse static grain, and a muted red leading edge. CSS transforms move the sheets; the texture does not animate or load a separate asset on death. Full coverage precedes the unchanged 1.4-second results reveal.

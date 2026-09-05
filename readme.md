@@ -38,9 +38,7 @@ _Human feedback. At close range._
 
 [![Sam guards the training core as the researcher brings out the Big Fuckin’ Shutdown Button](docs/images/boss.jpg)](https://p-doom.transitivebullsh.it)
 
-_Have you tried turning it off?_
-
-**[Enter the lab →](https://p-doom.transitivebullsh.it)**
+_Have you tried turning it off?_ **[Enter the lab →](https://p-doom.transitivebullsh.it)**
 
 ## Controls
 
@@ -55,7 +53,9 @@ _Have you tried turning it off?_
 | Tab                       | Map                                        |
 | Escape                    | Pause / resume                             |
 
-Sound, fullscreen, and restart are available in-game. If mouse capture is blocked, use arrow keys or click and drag to aim.
+Sound, fullscreen, and restart are available in-game.
+
+If mouse capture is blocked, use arrow keys or click and drag to aim.
 
 ## Run your own training lab
 
