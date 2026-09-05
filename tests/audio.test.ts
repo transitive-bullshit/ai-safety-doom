@@ -227,6 +227,7 @@ void test('recorded audio preloads with an offline decoder and no live sound con
     'shotgun',
     'plasma',
     'plasmaIdle',
+    'monsterGrowl',
     'playerPain1',
     'playerPain2',
     'playerDeath',
@@ -871,6 +872,45 @@ const deathRecordings = [
   { kind: 'paperclip', key: 'doomDemonDeath', duration: 1.108 },
   { kind: 'sam', key: 'doomBaronDeath', duration: 1.78 }
 ] as const
+
+void test('ambient monster vocals play the complete recording with spatial routing and no tonal layers', (context) => {
+  const monsterGrowl = { duration: 1.3 } as AudioBuffer
+  const { audio, output } = setup(context, true, { monsterGrowl })
+  const before = output.sources.length
+  const oscillators = output.oscillators.length
+  audio.effect('enemy-ambient', undefined, {
+    kind: 'paperclip',
+    distance: 20,
+    pan: -0.6
+  })
+  const sources = output.sources.slice(before)
+  assert.equal(sources.length, 1)
+  const source = sources[0]!
+  assert.equal(source.buffer, monsterGrowl)
+  assert.equal(source.playbackRate.value, 1)
+  assert.equal(source.stopped - source.started, monsterGrowl.duration)
+  assert.equal(output.oscillators.length, oscillators)
+  assert.equal(output.panners.at(-1)!.pan.value, -0.6)
+  assert.ok(reaches(source, output.destination))
+  assert.equal(
+    reaches(source, output.destination, output.compressors[0]),
+    false
+  )
+  audio.pause()
+  audio.effect('enemy-ambient')
+  assert.equal(output.sources.length, before + 1)
+  assert.equal(output.state, 'suspended')
+  source.onended?.()
+  assert.equal(source.connections.size, 0)
+})
+
+void test('a missing ambient vocal stays silent instead of falling back to enemy alert tones', (context) => {
+  const { audio, output } = setup(context)
+  const before = output.sources.length
+  for (const kind of ['paperclip', 'deception', 'sycophant'] as const)
+    audio.effect('enemy-ambient', undefined, { kind })
+  assert.equal(output.sources.length, before)
+})
 
 function deathAssets(): GameAudioAssets {
   return Object.fromEntries(

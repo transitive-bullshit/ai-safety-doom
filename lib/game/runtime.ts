@@ -332,7 +332,7 @@ export async function createGameRuntime(
           const distance = Math.hypot(dx, dz)
           // A distant vocal establishes the threat without changing awareness
           // or ending the opening grace period. Simulation time respects pause.
-          audio.effect('enemy-alert', undefined, {
+          audio.effect('enemy-ambient', undefined, {
             kind: monster.kind,
             distance,
             pan:

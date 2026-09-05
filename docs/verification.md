@@ -12,9 +12,13 @@ Verified September 5, 2026.
 
 ## Checks
 
-Formatting, lint, TypeScript, and all 102 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
+Formatting, lint, TypeScript, and all 104 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
+
+## Recorded opening growl
+
+The arrival cue now plays a dedicated recording adapted from Doom's demon-active `DSDMACT` growl. Its 1.276-second vocal is lowered, filtered, and given spatial room reflections; no synthesized alert tones are layered into it. The updated production Chrome journey identifies the loaded WAV through decoding and actual playback, verifying one complete native-rate source during play, silence while entry is paused, no repeat on resume, and a fresh cue on retry. There are no page errors. Three offline renders at distances 15–25 have finite, unclipped output with at least 9.2 dB headroom. Evidence: `/private/tmp/pdoom-growl-production-proof/` and `/private/tmp/pdoom-monster-growl-audition/`; [asset source and recipe](../public/game/audio/README.md#opening-monster-growl).
 
 ## Enemy projectiles, opening flow, and original Doom plasma
 
@@ -38,7 +42,7 @@ The pistol has no ammunition cost and the HUD displays infinity. Finite numeric 
 
 Sam enters a second phase on a surviving half-health crossing. Emergency lighting and an urgent announcement accompany alternating wide fans and a telegraphed three-rocket burst. The burst commits its aim on release, so strafing can evade it. Tests cover all difficulty tiers, cadence and spread, interrupted attacks, line-of-sight loss, fatal-hit suppression, one announcement, and a fresh run resetting the phase.
 
-Activating the final button freezes combat immediately while the presentation continues: the button depresses, light banks and terminals go dark, fans coast down, and relays/motors descend into silence. Deployment Delayed appears after 2.2 seconds; the 48-hour payoff and controls follow 850 ms later. Victory menu clunks remain active with the score suppressed. Reduced motion reveals a static result immediately.
+Activating the final button freezes combat immediately while the presentation continues: the button depresses, light banks and terminals go dark, fans coast down, and relays/motors descend into silence. Deployment Shut Down appears after 2.2 seconds; For now... and controls follow 850 ms later. Victory menu clunks remain active with the score suppressed. Reduced motion reveals a static result immediately.
 
 A normal-input Chrome route reached all four weapons, observed Sam’s escalation, defeated him, and shut down the lab in roughly two minutes. It verified frozen world state, extinguished lamps, delayed controls, held Space/Enter through reveal without accidental restart, and clean retry. Busy-frame samples ranged from 43 to 60 fps, median 60, on the reference machine. There were no browser warnings or errors. An isolated harness of the actual transition component verified reduced-motion behavior and cleanup. Screenshots were inspected. Evidence: `/private/tmp/pdoom-shutdown-proof/`. Further unimplemented ideas are in [the next polish audit](design/next-polish-audit.md).
 

@@ -20,6 +20,7 @@ export interface GameAudioAssets {
   shotgun?: AudioBuffer
   plasma?: AudioBuffer
   plasmaIdle?: AudioBuffer
+  monsterGrowl?: AudioBuffer
   playerPain1?: AudioBuffer
   playerPain2?: AudioBuffer
   playerDeath?: AudioBuffer
@@ -37,6 +38,7 @@ export async function loadGameAudioAssets(): Promise<GameAudioAssets> {
     shotgun: 'rlhf-shotgun',
     plasma: 'doom-plasma',
     plasmaIdle: 'doom-plasma-idle',
+    monsterGrowl: 'monster-growl',
     playerPain1: 'player-pain-1',
     playerPain2: 'player-pain-2',
     playerDeath: 'player-death',
@@ -978,6 +980,24 @@ export class GameAudio {
     }
   }
 
+  private ambientMonsterGrowl(time: number, spatial: Sound) {
+    const buffer = this.samples.monsterGrowl
+    // A missing ambient recording stays silent instead of borrowing a chirpy alert.
+    if (!buffer) return
+    const ctx = this.context!
+    const source = ctx.createBufferSource()
+    const gain = ctx.createGain()
+    source.buffer = buffer
+    gain.gain.value = (spatial.level ?? 1) * 1.25
+    source.connect(gain)
+    this.route(source, gain, [], time + buffer.duration, {
+      ...spatial,
+      wet: 0.38
+    })
+    source.start(time)
+    source.stop(time + buffer.duration)
+  }
+
   private recordedEnemyDeath(kind: EnemyKind, time: number, spatial: Sound) {
     const buffer = {
       deception: this.samples.doomImpDeath,
@@ -1315,6 +1335,8 @@ export class GameAudio {
       const strength = clamp(finite(detail.impact, 3) / 8, 0, 1)
       this.burst(0.12, 0.17 * strength, 310)
       this.tone(58, 25, 0.15, 0.18 * strength)
+    } else if (type === 'enemy-ambient') {
+      this.ambientMonsterGrowl(time, spatial)
     } else if (type === 'enemy-alert' || type === 'enemy') {
       this.enemyCue(
         detail.kind ?? 'deception',

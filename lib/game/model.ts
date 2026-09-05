@@ -1670,7 +1670,7 @@ export class GameWorld {
       this.projectiles = []
       this.shutdownCharge = null
       this.prompt = ''
-      this.say('AI TRAINING STOPPED. DEPLOYMENT DELAYED. BY 48 HOURS', 99)
+      this.say('AI TRAINING STOPPED. DEPLOYMENT SHUT DOWN. FOR NOW...', 99)
       this.events.push({ type: 'win' })
       return
     }

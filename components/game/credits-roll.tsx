@@ -293,8 +293,8 @@ export function CreditsRoll({
               <h3>
                 <ConsoleText>THANK YOU FOR PLAYING</ConsoleText>
               </h3>
-              <p>DEPLOYMENT DELAYED</p>
-              <p>BY 48 HOURS</p>
+              <p>DEPLOYMENT SHUT DOWN</p>
+              <p>FOR NOW...</p>
               <small>
                 An affectionate parody · No endorsement implied
                 <br />© 2026 · MIT

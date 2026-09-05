@@ -92,12 +92,12 @@ export function ShutdownTransition({
           <div className='overlay-panel console-overlay-panel shutdown-result'>
             <div className='eyebrow'>LAB AI TRAINING SHUT DOWN</div>
             <h2 className='shutdown-title' data-testid='shutdown-title'>
-              <ConsoleText>DEPLOYMENT DELAYED</ConsoleText>
+              <ConsoleText>DEPLOYMENT SHUT DOWN</ConsoleText>
             </h2>
             <div className='shutdown-payoff-slot'>
               {stage === 2 ? (
                 <p className='victory-payoff' data-testid='shutdown-payoff'>
-                  By 48 hours...
+                  For now...
                 </p>
               ) : null}
             </div>

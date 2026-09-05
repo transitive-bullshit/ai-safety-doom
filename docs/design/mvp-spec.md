@@ -50,7 +50,7 @@ The arrival chamber includes a worn wall sign with **PHASEONE[big]** as the larg
 
 Victory payoff:
 
-> Deployment delayed. By 48 hours.
+> Deployment shut down. For now...
 
 Death freezes gameplay and brings ten broad overlapping sheets of blood down over the scene while the complete death scream plays. Blunt ragged edges, dark maroon clots, and static coarse grain give the blood weight; only the sheet transforms and final darkening opacity animate. The screen reaches dark red coverage before Retry and Return appear at 1.4 seconds. Repeated Space/Enter events from a key held through the fatal hit cannot activate Retry. Reduced motion skips the falling wipe and reveals the covered results immediately; retry and return discard the transition so a later death starts fresh. Sam is a required finale deeper in the level, not an opening encounter or optional secret boss.
 

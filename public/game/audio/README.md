@@ -122,6 +122,44 @@ for monster, name in [
     Path(f"public/game/audio/doom-{monster}-death.wav").write_bytes(header + pcm + padding)
 ```
 
+## Opening monster growl
+
+`monster-growl.wav` is a restrained adaptation of **Doom's `DSDMACT` monster-active vocal**, extracted from the same verified shareware 1.9 `DOOM1.WAD` described above. id Software's [`MT_SERGEANT` definition](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/info.c) assigns `sfx_dmact` to the demon/Pinky's `activesound`; several larger monsters share it. This is a living-monster growl, not a death cry or synthesized pitched cue. The original playable lump contains 11,817 unsigned 8-bit PCM frames at 11,025 Hz, lasting 1.071837 seconds after DMX edge-padding removal.
+
+The adaptation plays that vocal at 0.84× pitch/speed, removes rumble below 45 Hz and bright detail above 2,200 Hz, applies gentle compression, and adds 8-millisecond/120-millisecond edge fades. The result is **1.276009 seconds**, 28,136 frames, mono 22,050 Hz 16-bit PCM, 56,350 bytes. PCM peak is **0.779999 (−2.16 dBFS)** and RMS is **0.204128 (−13.80 dBFS)**, with finite samples and no full-scale clipped output. No oscillators, synthesized noise, layered speech, added reverberation, or death recordings are mixed into it. The runtime can place it quietly in the background with its existing positional mix. All previously prepared WAVs remain byte-for-byte unchanged.
+
+This adaptation retains the source Doom recording's copyright; it is **not CC0** and is not relicensed under the repository's MIT license or the Doom engine source-code license. See [NOTICES.md](../../../NOTICES.md).
+
+SHA-256:
+
+```text
+1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771  source DOOM1.WAD
+dd4ee1ddcd74d3b4717046cb36dab33072dcdfb44ec5e498347dd45acf0bcba2  source DSDMACT lump
+83c6df50db2051025db287a64f32becbdd20fe4498fa713b15bea85ae4eef790  monster-growl.wav
+```
+
+To reproduce, use the WAD-reading code in the monster-death section to retrieve `lumps["DSDMACT"]`, then export its unmodified playable PCM:
+
+```python
+import wave
+lump = lumps["DSDMACT"]
+encoding, rate, length = struct.unpack_from("<HHI", lump)
+assert encoding == 3 and rate == 11025 and length == len(lump) - 8
+with wave.open("doom-dmact-original.wav", "wb") as target:
+    target.setnchannels(1)
+    target.setsampwidth(1)
+    target.setframerate(rate)
+    target.writeframes(lump[24:8 + length - 16])
+```
+
+Then run FFmpeg (9.0.1 was used for the saved file):
+
+```sh
+ffmpeg -i doom-dmact-original.wav \
+  -af 'asetrate=9261,aresample=22050,highpass=f=45,lowpass=f=2200,acompressor=threshold=0.2:ratio=1.7:attack=8:release=70:makeup=1.2,volume=1.12,alimiter=limit=0.78:level=0:latency=1,afade=t=in:d=0.008,afade=t=out:st=1.156:d=0.12' \
+  -map_metadata -1 -ac 1 -ar 22050 -c:a pcm_s16le monster-growl.wav
+```
+
 ## Sam boss death recording
 
 `doom-baron-death.wav` now uses **HaelDB's `3yell9.wav`**, a different take from the approved player death voice, from [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) under the creator's offered [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) option. The original archive and license provenance are documented in the player-vocal section below. The original file is preserved byte-for-byte as `sources/haeldb-3yell9.wav` and matches archive entry `yelling sounds/3yell9.wav`.
