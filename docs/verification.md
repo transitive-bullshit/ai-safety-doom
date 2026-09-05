@@ -12,9 +12,17 @@ Verified September 5, 2026.
 
 ## Checks
 
-Formatting, lint, TypeScript, and all 95 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
+Formatting, lint, TypeScript, and all 97 unit tests pass. The unit coverage includes geometric intersections, frame-rate-independent acceleration and braking, stairs and ledge drops, gravity, vertical autoaim and projectile collision, enemy stair navigation and attack windup, wall and door collision, obstruction-safe door closing and seal timing, pickup limits, weapon costs/cadence, difficulty tuning, respawning, arrival grace, boss-gated victory, death, barrel collision/chain damage/cover occlusion, spatial impact normals, audio lifecycle, silent recorded-audio preload and first-shot playback, monster death recording selection, download/decode fallback, panning, attenuation, voice limits, pause, sector crossfades, and notification timing/priority/bounds.
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
+
+## Enemy projectile identities and electrical plasma
+
+Sam’s base health increases from 1,050 to 1,250, about 19%, with the existing difficulty multipliers and half-health escalation intact. Enemy projectiles now retain their firing identity separately from their collision/damage kind. Deception uses a jagged violet void bolt, paperclips fire spinning metal clips, and Sam launches finned industrial rockets with orange exhaust. Matching attack audio uses torn electrical static, steel launch/rattle, and pressure ignition/combustion respectively. Sycophants retain melee attacks.
+
+Each enemy projectile has two bounded trail sprites that follow its velocity. Expiry removes the body and trails; decorative motion becomes steady under reduced motion. The actual renderer fixture verified all three profiles and cleanup of all nine body/trail objects. The art sheet and in-world screenshots were inspected. Evidence: `/private/tmp/pdoom-projectile-proof/`.
+
+The player plasma pulse now has an inharmonic electrical body, a sharp contact snap, and two brief arc crackles, with a quieter low punch underneath. Its cached waveform is reused for rapid fire and released on disposal. All sources finish within 96 ms. Fourteen Chrome before/after renders cover individual launches, sustained plasma, and combined combat; all samples are finite and unclipped. Sustained plasma peaks at 0.531 (5.50 dB headroom); a dense 186-event mix peaks at 0.892 (1.00 dB headroom). These are signal measurements, not a perceptual listening claim. Approved pistol, shotgun, BFG, player voice, and recorded death assets remain unchanged. Evidence: `/private/tmp/pdoom-electrical-audition/`.
 
 ## Firing response, boss escalation, and shutdown finale
 

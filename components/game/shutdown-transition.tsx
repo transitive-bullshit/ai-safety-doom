@@ -97,7 +97,7 @@ export function ShutdownTransition({
             <div className='shutdown-payoff-slot'>
               {stage === 2 ? (
                 <p className='victory-payoff' data-testid='shutdown-payoff'>
-                  For now...
+                  By 48 hours...
                 </p>
               ) : null}
             </div>

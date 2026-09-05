@@ -31,6 +31,10 @@ import { CELL, LEVEL, floorHeight, sectorAt, type Sector } from './level'
 import { PLAYER_EYE_HEIGHT, type GameWorld, type GameEvent } from './model'
 import { FacilityScenery } from './scenery'
 import { ENEMY_ART, type EnemyArt } from './enemy-art'
+import {
+  enemyProjectileTexture,
+  type EnemyProjectileArt
+} from './projectile-art'
 import { pickupTexture, signTexture, surfaceTexture } from './textures'
 import { SHUTDOWN_FINALE_SECONDS, type EnemyKind } from './types'
 
@@ -57,6 +61,12 @@ interface Particle {
   velocity: Vector3
   life: number
   duration: number
+}
+
+interface ProjectileVisual {
+  sprite: Sprite
+  trail: Sprite[]
+  profile?: Exclude<EnemyKind, 'sycophant'>
 }
 
 function radialTexture(shadow = false) {
@@ -113,7 +123,7 @@ export class GameView {
     string,
     { group: Group; floor: number; height: number }
   >()
-  private readonly projectiles = new Map<string, Sprite>()
+  private readonly projectiles = new Map<string, ProjectileVisual>()
   private readonly textures = new Set<Texture>()
   private readonly particles: Particle[] = []
   private readonly shutdown = new Group()
@@ -136,6 +146,9 @@ export class GameView {
   private readonly blastColor = { value: new Color('#f5a355') }
   private readonly glowMap: Texture
   private readonly energyMaps: Record<'fire' | 'plasma' | 'shutdown', Texture>
+  private readonly enemyProjectileMaps: Record<EnemyProjectileArt, Texture>
+  private readonly projectileScreen = new Vector3()
+  private readonly projectileAhead = new Vector3()
   private readonly scorchMap: Texture
   private readonly decals: Mesh[] = []
   private readonly flares: {
@@ -218,6 +231,10 @@ export class GameView {
       shutdown: this.own(
         energyTexture(['#f6ffce', '#d9f38a', '#99cb4e', '#588d35', '#355132a0'])
       )
+    }
+    this.enemyProjectileMaps = {
+      paperclip: this.own(enemyProjectileTexture('paperclip')),
+      sam: this.own(enemyProjectileTexture('sam'))
     }
     this.scorchMap = this.own(radialTexture(true))
 
@@ -1016,26 +1033,44 @@ if (retroShutdownTime >= 0.0) {
       entry.group.visible = door.open < 0.99
     }
     const live = new Set(world.projectiles.map((projectile) => projectile.id))
-    for (const [id, sprite] of this.projectiles) {
+    for (const [id, { sprite, trail }] of this.projectiles) {
       if (!live.has(id)) {
         this.scene.remove(sprite)
         sprite.material.dispose()
         ;(sprite.children[0] as Sprite).material.dispose()
+        for (const segment of trail) {
+          this.scene.remove(segment)
+          segment.material.dispose()
+        }
         this.projectiles.delete(id)
       }
     }
+    const projectileProfiles: {
+      id: string
+      enemyKind: EnemyKind
+      profile: Exclude<EnemyKind, 'sycophant'>
+    }[] = []
+    this.camera.updateMatrixWorld()
     for (const projectile of world.projectiles) {
-      let sprite = this.projectiles.get(projectile.id)
-      if (!sprite) {
+      let visual = this.projectiles.get(projectile.id)
+      if (!visual) {
+        const profile =
+          projectile.owner === 'enemy' &&
+          projectile.enemyKind &&
+          projectile.enemyKind !== 'sycophant'
+            ? projectile.enemyKind
+            : undefined
         const kind =
           projectile.kind === 'shutdown'
             ? 'shutdown'
             : projectile.kind === 'plasma'
               ? 'plasma'
               : 'fire'
-        sprite = new Sprite(
+        const sprite = new Sprite(
           new SpriteMaterial({
-            map: this.energyMaps[kind],
+            map: profile && profile !== 'deception'
+              ? this.enemyProjectileMaps[profile]
+              : this.energyMaps[kind],
             transparent: true,
             depthWrite: false,
             alphaTest: 0.2
@@ -1045,21 +1080,94 @@ if (retroShutdownTime >= 0.0) {
           new SpriteMaterial({
             map: this.glowMap,
             color:
-              kind === 'shutdown'
-                ? '#b9e66e'
-                : kind === 'plasma'
-                  ? '#58d6eb'
-                  : '#ff883e',
+              profile === 'paperclip'
+                  ? '#e9edc7'
+                  : kind === 'shutdown'
+                    ? '#b9e66e'
+                    : kind === 'plasma'
+                      ? '#58d6eb'
+                      : '#ff883e',
             transparent: true,
             depthWrite: false,
             blending: AdditiveBlending,
-            opacity: 0.8
+            opacity: profile === 'paperclip' ? 0.24 : 0.8
           })
         )
-        halo.scale.setScalar(2.5)
+        halo.scale.setScalar(profile && profile !== 'deception' ? 1.6 : 2.5)
         sprite.add(halo)
-        this.projectiles.set(projectile.id, sprite)
+        const trail: Sprite[] = []
+        if (profile && profile !== 'deception') {
+          for (let index = 0; index < 2; index++) {
+            const segment = new Sprite(
+              new SpriteMaterial({
+                map: this.glowMap,
+                color: profile === 'sam' ? '#ff9b45' : '#ffffff',
+                transparent: true,
+                depthWrite: false,
+                opacity: 0.72 - index * 0.3,
+                blending: AdditiveBlending
+              })
+            )
+            trail.push(segment)
+            this.scene.add(segment)
+          }
+        }
+        visual = { sprite, trail, profile }
+        this.projectiles.set(projectile.id, visual)
         this.scene.add(sprite)
+      }
+      const { sprite, trail, profile } = visual
+      sprite.position.set(projectile.x, projectile.y, projectile.z)
+      if (profile) {
+        projectileProfiles.push({
+          id: projectile.id,
+          enemyKind: projectile.enemyKind!,
+          profile
+        })
+      }
+      if (profile && profile !== 'deception') {
+        const decorativeTime = this.reducedMotion.matches ? 0 : world.time
+        const size = profile === 'sam' ? 1.24 : 0.88
+        sprite.scale.set(size, profile === 'sam' ? size / 2 : size, 1)
+        if (profile === 'sam') {
+          // The rocket nose follows its projected travel direction, without tumbling.
+          this.projectileScreen.copy(sprite.position).project(this.camera)
+          this.projectileAhead
+            .set(
+              projectile.x + projectile.dx * 0.06,
+              projectile.y + projectile.vy * 0.06,
+              projectile.z + projectile.dz * 0.06
+            )
+            .project(this.camera)
+          const screenX =
+            (this.projectileAhead.x - this.projectileScreen.x) *
+            this.camera.aspect
+          const screenY = this.projectileAhead.y - this.projectileScreen.y
+          sprite.material.rotation =
+            Math.hypot(screenX, screenY) < 0.002
+              ? -Math.PI / 2
+              : Math.atan2(screenY, screenX)
+        } else {
+          sprite.material.rotation = decorativeTime * 7 - Math.PI / 6
+        }
+        const speed =
+          Math.hypot(projectile.dx, projectile.vy, projectile.dz) || 1
+        for (let index = 0; index < trail.length; index++) {
+          const segment = trail[index]!
+          const behind = (profile === 'sam' ? 0.48 : 0.25) * (index + 1)
+          segment.position.set(
+            projectile.x - (projectile.dx / speed) * behind,
+            projectile.y - (projectile.vy / speed) * behind,
+            projectile.z - (projectile.dz / speed) * behind
+          )
+          segment.scale.setScalar(
+            profile === 'sam'
+              ? 0.52 - index * 0.2
+              : 0.2 - index * 0.07
+          )
+          segment.material.rotation = 0
+        }
+        continue
       }
       const size =
         projectile.kind === 'shutdown'
@@ -1067,10 +1175,13 @@ if (retroShutdownTime >= 0.0) {
           : projectile.kind === 'rocket'
             ? 0.55
             : 0.4
-      sprite.scale.setScalar(size * (1 + Math.sin(world.time * 31) * 0.08))
-      sprite.material.rotation = world.time * 5
-      sprite.position.set(projectile.x, projectile.y, projectile.z)
+      const energyTime = profile === 'deception' && this.reducedMotion.matches ? 0 : world.time
+      sprite.scale.setScalar(size * (1 + Math.sin(energyTime * 31) * 0.08))
+      sprite.material.rotation = energyTime * 5
     }
+    const profiles = JSON.stringify(projectileProfiles)
+    if (this.canvas.dataset.projectileProfiles !== profiles)
+      this.canvas.dataset.projectileProfiles = profiles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i]!
       particle.life -= dt

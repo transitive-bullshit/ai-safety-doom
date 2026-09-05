@@ -78,6 +78,8 @@ export async function createGameRuntime(
   let frameCount = 0
   let frameStart = previous
   let fps = 60
+  const arrivalCueAt = 1.3 + Math.random() * 0.5
+  let arrivalCuePlayed = false
 
   const emit = () => {
     if (disposed) return
@@ -144,6 +146,7 @@ export async function createGameRuntime(
     previous = performance.now()
     canvas.focus({ preventScroll: true })
     try {
+      audio.setWeapon(world.player.weapon)
       audio.resume()
     } catch {
       /* A browser audio failure must not block play. */
@@ -307,6 +310,44 @@ export async function createGameRuntime(
       let weaponFeedbackChanged = false
       const sector = sectorAt(world.player.x, world.player.z)
       audio.setEnvironment(sector.id, sector.sky)
+      audio.setWeapon(world.player.weapon)
+      if (
+        !arrivalCuePlayed &&
+        world.phase === 'playing' &&
+        world.time >= arrivalCueAt
+      ) {
+        arrivalCuePlayed = true
+        const nearby = world.enemies
+          .filter((enemy) => enemy.health > 0 && enemy.kind !== 'sam')
+          .sort(
+            (a, b) =>
+              Math.hypot(a.x - world.player.x, a.z - world.player.z) -
+              Math.hypot(b.x - world.player.x, b.z - world.player.z)
+          )
+          .slice(0, 3)
+        const monster = nearby[Math.floor(Math.random() * nearby.length)]
+        if (monster) {
+          const dx = monster.x - world.player.x
+          const dz = monster.z - world.player.z
+          const distance = Math.hypot(dx, dz)
+          // A distant vocal establishes the threat without changing awareness
+          // or ending the opening grace period. Simulation time respects pause.
+          audio.effect('enemy-alert', undefined, {
+            kind: monster.kind,
+            distance,
+            pan:
+              distance > 0.01
+                ? (dx * Math.cos(world.player.angle) -
+                    dz * Math.sin(world.player.angle)) /
+                  distance
+                : 0
+          })
+          canvas.dataset.arrivalCue = JSON.stringify({
+            kind: monster.kind,
+            at: world.time
+          })
+        }
+      }
       for (const event of world.drainEvents()) {
         view.handleEvent(event)
         const dx = event.x === undefined ? 0 : event.x - world.player.x

@@ -628,7 +628,9 @@ void test('every enemy attack emits once at release; dodged swipes sound and occ
           assert.ok(world.projectiles.length > 0)
           assert.ok(
             world.projectiles.every(
-              (projectile) => projectile.enemyKind === attacks[0]!.kind
+              (projectile) =>
+                projectile.enemyKind === attacks[0]!.kind &&
+                projectile.sourceEnemyId === enemy.id
             )
           )
         }
@@ -1134,6 +1136,126 @@ void test('enemy projectiles respect the same walls that stop player shots', () 
   ]
   advance(world, 0.5)
   assert.equal(world.player.health, 100)
+  assert.equal(world.projectiles.length, 0)
+})
+
+void test('projectiles stop at the first actor and cannot damage a second actor downrange', () => {
+  for (const kind of ['plasma', 'enemy', 'rocket'] as const) {
+    const world = isolatedWorld()
+    const lane = openRun()
+    placePlayer(world, lane.start, lane.angle)
+    const first = target('deception', lane.near, 'first')
+    const behind = target('deception', lane.far, 'behind')
+    if (kind === 'plasma') world.enemies = [first, behind]
+    const ray = direction(lane.angle)
+    world.projectiles = [
+      {
+        id: 'actor-contact',
+        ...(kind === 'plasma' ? lane.start : lane.near),
+        y: world.player.y + 1,
+        vy: 0,
+        dx: ray.x * (kind === 'plasma' ? 600 : -600),
+        dz: ray.z * (kind === 'plasma' ? 600 : -600),
+        kind,
+        owner: kind === 'plasma' ? 'player' : 'enemy',
+        life: 5
+      }
+    ]
+    world.step(1 / 60, idle)
+    assert.equal(world.projectiles.length, 0)
+    const events = world.drainEvents()
+    assert.equal(events.filter((event) => event.type === 'impact').length, 1)
+    if (kind === 'plasma') {
+      assert.ok(first.health < first.maxHealth)
+      assert.equal(behind.health, behind.maxHealth)
+    } else assert.ok(world.player.health < 100)
+    const health = world.player.health
+    const enemyHealth = first.health
+    advance(world, 0.3)
+    assert.equal(world.player.health, health)
+    assert.equal(first.health, enemyHealth)
+    assert.equal(behind.health, behind.maxHealth)
+  }
+})
+
+void test('enemy fire hits another monster before the player and ignores its shooter', () => {
+  for (const kind of ['enemy', 'rocket'] as const) {
+    const world = isolatedWorld()
+    const lane = openRun()
+    placePlayer(world, lane.far)
+    const shooter = target('deception', lane.start, 'shooter')
+    const victim = target('deception', lane.near, 'victim')
+    const secondary = target(
+      'deception',
+      { x: lane.near.x + 1.6, z: lane.near.z },
+      'secondary'
+    )
+    world.enemies = [shooter, victim, secondary]
+    const ray = direction(lane.angle)
+    world.projectiles = [
+      {
+        id: 'friendly-fire',
+        ...lane.start,
+        y: shooter.y + 1,
+        vy: 0,
+        dx: ray.x * 600,
+        dz: ray.z * 600,
+        kind,
+        owner: 'enemy',
+        enemyKind: shooter.kind,
+        sourceEnemyId: shooter.id,
+        life: 5
+      }
+    ]
+    world.step(1 / 60, idle)
+    assert.equal(victim.maxHealth - victim.health, kind === 'rocket' ? 28 : 16)
+    if (kind === 'rocket') {
+      assert.ok(secondary.health < secondary.maxHealth)
+      assert.ok(
+        secondary.maxHealth - secondary.health <
+          victim.maxHealth - victim.health
+      )
+    } else assert.equal(secondary.health, secondary.maxHealth)
+    assert.equal(shooter.health, shooter.maxHealth)
+    assert.equal(world.player.health, 100)
+    assert.equal(world.projectiles.length, 0)
+    assert.equal(
+      world
+        .drainEvents()
+        .filter((event) => event.type === 'impact' && event.surface === 'enemy')
+        .length,
+      1
+    )
+  }
+})
+
+void test('an enemy shot stops at the nearer player instead of a monster behind them', () => {
+  const world = isolatedWorld()
+  const lane = openRun()
+  placePlayer(world, lane.near)
+  const shooter = target('deception', lane.start, 'shooter')
+  const behind = target('paperclip', lane.far, 'behind')
+  world.enemies = [shooter, behind]
+  const ray = direction(lane.angle)
+  world.projectiles = [
+    {
+      id: 'nearest-player',
+      ...lane.start,
+      y: shooter.y + 1,
+      vy: 0,
+      dx: ray.x * 900,
+      dz: ray.z * 900,
+      kind: 'enemy',
+      owner: 'enemy',
+      enemyKind: shooter.kind,
+      sourceEnemyId: shooter.id,
+      life: 5
+    }
+  ]
+  world.step(1 / 60, idle)
+  assert.ok(world.player.health < 100)
+  assert.equal(shooter.health, shooter.maxHealth)
+  assert.equal(behind.health, behind.maxHealth)
   assert.equal(world.projectiles.length, 0)
 })
 

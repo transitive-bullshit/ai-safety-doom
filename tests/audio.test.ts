@@ -225,6 +225,8 @@ void test('recorded audio preloads with an offline decoder and no live sound con
   for (const key of [
     'pistol',
     'shotgun',
+    'plasma',
+    'plasmaIdle',
     'playerPain1',
     'playerPain2',
     'playerDeath',
@@ -600,59 +602,39 @@ void test('rapid pistol reports stay bounded, remain muted through pause and res
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
 })
 
-void test('plasma has an immediate crack, a held pulse body and a short delayed arc that settles before the next shot', (context) => {
-  const { audio, output } = setup(context)
+void test('plasma fires the original prepared recording once at native pitch and full duration', (context) => {
+  const sample = { duration: 0.514 } as AudioBuffer
+  const { audio, output } = setup(context, true, { plasma: sample })
   output.currentTime = 2
   const before = output.sources.length
-  const gainStart = output.gains.length
+  const beforeNodes = output.nodes.length
   audio.effect('shot', 2)
   const pulse = output.sources.slice(before)
-  assert.ok(pulse.length > 1)
-  assert.ok(pulse.some((source) => source.started === output.currentTime))
-  assert.ok(
-    pulse.some((source) => source.started - output.currentTime >= 0.01),
-    'the electrical tail should follow the first impact'
-  )
-  const heldBody = pulse.find((source) => {
-    if (!source.buffer || source.stopped - source.started < 0.06) return false
-    const envelope = output.gains
-      .slice(gainStart)
-      .find((gain) => gain.gain.events.length && reaches(source, gain))
-      ?.gain.events
-    if (!envelope) return false
-    const peak = Math.max(...envelope.map((event) => event.value))
-    return envelope.some(
-      (event) =>
-        event.value >= peak * 0.8 && event.time - source.started >= 0.015
-    )
-  })
-  assert.ok(heldBody, 'rapid fire still needs body beyond the first transient')
-  for (const source of pulse) {
-    assert.ok(source.stopped > source.started)
-    assert.ok(source.stopped - output.currentTime <= 0.115)
-    assert.ok(reaches(source, output.destination))
-    assert.equal(
-      reaches(source, output.destination, output.compressors[0]),
-      false
-    )
-  }
+  assert.equal(pulse.length, 1)
+  const source = pulse[0]!
+  assert.equal(source.buffer, sample)
+  assert.equal(source.playbackRate.value, 1)
+  assert.equal(source.started, output.currentTime)
+  assert.equal(source.stopped, output.currentTime + sample.duration)
+  assert.ok(reaches(source, output.destination))
+  assert.equal(reaches(source, output.destination, output.compressors[0]), false)
+  source.onended?.()
+  assert.ok(output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0))
 })
 
-void test('sustained plasma releases each previous pulse, bounds pathological overlap, and preserves mute through pause and resume', (context) => {
-  const { audio, output } = setup(context)
+void test('rapid recorded plasma overlaps only its natural tails and remains bounded, muted and disposable', (context) => {
+  const sample = { duration: 0.514 } as AudioBuffer
+  const { audio, output } = setup(context, true, { plasma: sample })
   const before = output.sources.length
   const beforeNodes = output.nodes.length
   audio.setMuted(true)
-  const master = output.gains.find((gain) =>
-    gain.connections.has(output.destination)
-  )!
-  let previous: SourceStub[] = []
+  const master = output.gains.find((gain) => gain.connections.has(output.destination))!
   for (let shot = 0; shot < 80; shot++) {
     output.currentTime = shot * 0.11
-    const current = output.sources.length
     audio.effect('shot', 2)
-    assert.ok(previous.every((source) => source.connections.size === 0))
-    previous = output.sources.slice(current)
+    const live = output.sources.slice(before).filter((source) => source.connections.size)
+    assert.ok(live.length <= Math.ceil(sample.duration / 0.11))
+    assert.ok(live.every((source) => source.buffer === sample && source.playbackRate.value === 1))
   }
   for (let shot = 0; shot < 100; shot++) audio.effect('shot', 2)
   const pulses = output.sources.slice(before)
@@ -666,14 +648,96 @@ void test('sustained plasma releases each previous pulse, bounds pathological ov
   assert.equal(output.state, 'suspended')
   assert.equal(output.sources.length, pausedCount)
   audio.resume()
-  assert.equal(output.sources.length, pausedCount)
   assert.equal(master.gain.value, 0)
   for (const source of pulses) source.onended?.()
-  assert.ok(
-    output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0)
-  )
+  assert.ok(output.nodes.slice(beforeNodes).every((node) => node.connections.size === 0))
   audio.dispose()
   assert.ok(output.nodes.every((node) => node.connections.size === 0))
+})
+
+void test('missing plasma recordings leave a bounded emergency cue and do not replace prepared weapons or vocals', (context) => {
+  const samples = {
+    pistol: { duration: 0.31 },
+    shotgun: { duration: 0.87 },
+    playerPain1: { duration: 0.43 }
+  } as GameAudioAssets
+  const { audio, output } = setup(context, true, samples)
+  const before = output.sources.length
+  audio.setWeapon(2)
+  assert.equal(output.sources.length, before)
+  audio.effect('shot', 2)
+  const fallback = output.sources.slice(before)
+  assert.ok(fallback.length > 0)
+  assert.ok(fallback.every((source) => source.stopped <= output.currentTime + 0.11))
+  audio.effect('shot', 0)
+  audio.effect('shot', 1)
+  audio.effect('hurt')
+  for (const buffer of Object.values(samples))
+    assert.ok(output.sources.some((source) => source.buffer === buffer))
+})
+
+void test('the selected plasma idle loop fades through the shared mix without duplication across switching, mute or pause', (context) => {
+  const sample = { duration: 2.56 } as AudioBuffer
+  const state = setup(context, false, { plasmaIdle: sample })
+  state.audio.setWeapon(2)
+  state.audio.resume()
+  const { audio, output } = state
+  const loops = () => output.sources.filter((source) => source.buffer === sample)
+  assert.equal(loops().length, 1)
+  const source = loops()[0]!
+  const gain = output.gains.find((node) => source.connections.has(node))!
+  assert.ok(gain.gain.value > 0 && gain.gain.value < 0.2)
+  assert.equal(source.stopped, Infinity)
+  assert.ok(reaches(source, output.destination))
+  assert.equal(reaches(source, output.destination, output.compressors[0]), false)
+  for (let change = 0; change < 20; change++) {
+    audio.setWeapon(1)
+    assert.equal(gain.gain.value, 0)
+    audio.setWeapon(2)
+    audio.setWeapon(2)
+  }
+  assert.equal(loops().length, 1)
+  const master = output.gains.find((node) => node.connections.has(output.destination))!
+  audio.setMuted(true)
+  assert.equal(master.gain.value, 0)
+  audio.pause()
+  assert.equal(output.state, 'suspended')
+  assert.equal(gain.gain.value, 0)
+  audio.setWeapon(0)
+  audio.setWeapon(2)
+  assert.equal(gain.gain.value, 0)
+  audio.resume()
+  assert.equal(master.gain.value, 0)
+  assert.ok(gain.gain.value > 0)
+  assert.equal(loops().length, 1)
+  audio.finish()
+  assert.equal(gain.gain.value, 0)
+  context.mock.timers.tick(10000)
+  assert.equal(output.state, 'suspended', 'an infinite idle bed must not keep terminal audio alive')
+  audio.dispose()
+  assert.ok(source.stopCalls > 0)
+  assert.ok(output.nodes.every((node) => node.connections.size === 0))
+})
+
+void test('death and lab shutdown silence plasma idle and later selections cannot revive it', (context) => {
+  setup(context, false)
+  for (const ending of ['player-death', 'win']) {
+    const sample = { duration: 2.56 } as AudioBuffer
+    const audio = new GameAudio({ plasmaIdle: sample })
+    audio.resume()
+    const output = AudioContextStub.instances.at(-1)!
+    audio.setWeapon(2)
+    const source = output.sources.find((node) => node.buffer === sample)!
+    const gain = output.gains.find((node) => source.connections.has(node))!
+    assert.ok(gain.gain.value > 0)
+    audio.effect(ending)
+    assert.equal(gain.gain.value, 0)
+    audio.setWeapon(0)
+    audio.setWeapon(2)
+    audio.resume()
+    assert.equal(gain.gain.value, 0)
+    audio.dispose()
+  }
 })
 
 void test('pickup categories have distinct pitch, envelope and rhythm, and shutdown has a heavier weapon cue', (context) => {
@@ -956,7 +1020,9 @@ void test('every enemy has distinct awareness, attack and death profiles with a 
       const oscillators = sources.filter(
         (source) => source.frequency.events.length > 0
       )
-      assert.ok(oscillators.length > 0)
+      if (event === 'enemy' && (kind === 'deception' || kind === 'paperclip'))
+        assert.equal(oscillators.length, 0, 'these weapon reports have no pitched notes')
+      else assert.ok(oscillators.length > 0)
       // Every tonal excitation is rough and filtered, with restrained pitch travel.
       assert.ok(oscillators.every((source) => source.type === 'sawtooth'))
       for (const source of oscillators) {
@@ -998,6 +1064,60 @@ void test('every enemy has distinct awareness, attack and death profiles with a 
       ([key, duration]) => key === 'sam/kill' || duration < shutdown
     )
   )
+})
+
+void test('enemy launches distinguish an unpitched fire roar, dry steel report and held rocket exhaust', (context) => {
+  const { audio, output } = setup(context)
+  const capture = (kind: EnemyKind) => {
+    const sourceStart = output.sources.length
+    const gainStart = output.gains.length
+    audio.effect('enemy', undefined, { kind })
+    const sources = output.sources.slice(sourceStart)
+    const gains = output.gains.slice(gainStart)
+    return {
+      sources,
+      noise: sources.filter((source) => source.buffer),
+      tones: sources.filter((source) => source.frequency.events.length),
+      sends: gains.filter(({ gain }) => !gain.events.length).map(({ gain }) => gain.value),
+      holds: gains.flatMap(({ gain }) =>
+        gain.events.filter(
+          (event) => event.type === 'set' && event.value > 0.01
+        )
+      )
+    }
+  }
+  const deception = capture('deception')
+  const paperclip = capture('paperclip')
+  const sam = capture('sam')
+  const melee = capture('sycophant')
+  for (const launch of [deception, paperclip, sam]) {
+    assert.ok(
+      launch.noise.some(
+        (source) => source.started === 0 && source.stopped <= 0.08
+      ),
+      'projectile release has an immediate broadband report'
+    )
+    assert.ok(launch.sources.every((source) => source.stopped < 0.8))
+  }
+  assert.equal(deception.tones.length, 0)
+  assert.ok(deception.sources.every((source) => source.started < 0.02))
+  assert.ok(deception.noise.some((source) => source.stopped - source.started >= 0.4))
+  assert.ok(deception.holds.some((event) => event.time > 0.1))
+  assert.equal(paperclip.tones.length, 0)
+  assert.ok(paperclip.sources.every((source) => source.started < 0.01))
+  assert.ok(paperclip.sources.every((source) => source.stopped <= 0.21))
+  assert.ok(paperclip.holds.some((event) => event.time > 0.02))
+  assert.ok(
+    Math.max(...paperclip.sends) < Math.min(...deception.sends),
+    'steel has a dry weapon report rather than a ringing reflective tail'
+  )
+  const rocketBass = Math.min(
+    ...sam.tones.map((source) => source.frequency.events[0]!.value)
+  )
+  assert.ok(rocketBass < 90)
+  assert.ok(sam.noise.some((source) => source.stopped - source.started >= 0.45))
+  assert.ok(sam.holds.some((event) => event.time >= 0.08))
+  assert.ok(melee.sources.every((source) => source.stopped <= 0.3))
 })
 
 void test('all enemy lifecycle layers retain bounded pan and distance attenuation', (context) => {

@@ -18,6 +18,8 @@ export interface AudioDetail {
 export interface GameAudioAssets {
   pistol?: AudioBuffer
   shotgun?: AudioBuffer
+  plasma?: AudioBuffer
+  plasmaIdle?: AudioBuffer
   playerPain1?: AudioBuffer
   playerPain2?: AudioBuffer
   playerDeath?: AudioBuffer
@@ -33,6 +35,8 @@ export async function loadGameAudioAssets(): Promise<GameAudioAssets> {
   const files = {
     pistol: 'system-prompt-pistol',
     shotgun: 'rlhf-shotgun',
+    plasma: 'doom-plasma',
+    plasmaIdle: 'doom-plasma-idle',
     playerPain1: 'player-pain-1',
     playerPain2: 'player-pain-2',
     playerDeath: 'player-death',
@@ -114,6 +118,8 @@ export class GameAudio {
   private muted = false
   private active = false
   private noise: AudioBuffer | undefined
+  private weapon: WeaponId = 0
+  private plasmaIdleGain: GainNode | undefined
   private score: TrainingScore | undefined
   private painVoices: Voice[] = []
   private nextPainAt = 0
@@ -225,6 +231,7 @@ export class GameAudio {
     void ctx.resume().catch(() => {})
     this.ambience?.gain.setTargetAtTime(0.26, ctx.currentTime, 0.25)
     this.active = true
+    this.updatePlasmaIdle()
     this.score?.start()
     // Audio time freezes on suspend. Preserve the existing accent schedule.
     if (this.nextAccent < ctx.currentTime)
@@ -235,6 +242,8 @@ export class GameAudio {
   pause() {
     this.clearFinishTimer()
     this.active = false
+    // The context suspends immediately; resume fades the selected weapon in.
+    this.plasmaIdleGain?.gain.setValueAtTime(0, this.context!.currentTime)
     this.score?.pause()
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
@@ -244,6 +253,7 @@ export class GameAudio {
   finish() {
     this.clearFinishTimer()
     this.active = false
+    this.updatePlasmaIdle()
     this.score?.pause(true)
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
@@ -275,6 +285,37 @@ export class GameAudio {
       muted ? 0 : 0.72,
       this.context!.currentTime,
       0.03
+    )
+  }
+
+  setWeapon(weapon: WeaponId) {
+    if (this.weapon === weapon) return
+    this.weapon = weapon
+    this.updatePlasmaIdle()
+  }
+
+  private updatePlasmaIdle() {
+    const ctx = this.context
+    if (!ctx) return
+    const selected =
+      this.active && !this.playerDead && !this.shuttingDown && this.weapon === 2
+    if (selected && !this.plasmaIdleGain && this.samples.plasmaIdle) {
+      const source = ctx.createBufferSource()
+      const gain = ctx.createGain()
+      source.buffer = this.samples.plasmaIdle
+      source.loop = true
+      gain.gain.value = 0
+      source.connect(gain)
+      gain.connect(this.dry!)
+      source.start(ctx.currentTime)
+      this.plasmaIdleGain = gain
+      this.beds.push(source)
+      this.graph.push(source, gain)
+    }
+    this.plasmaIdleGain?.gain.setTargetAtTime(
+      selected ? 0.14 : 0,
+      ctx.currentTime,
+      selected ? 0.12 : 0.04
     )
   }
 
@@ -791,14 +832,26 @@ export class GameAudio {
         )
         this.burst(0.15, 0.13, 2600, time + 0.17, sound, 'bandpass')
       } else if (cue === 'attack') {
-        this.rasp(109, 91, 0.24, 0.28, time, sound, 620)
-        this.burst(0.1, 0.31, 850, time, sound)
+        // Ignition and pressure hit together, followed by a scorched, unpitched roar.
+        const ignition: Sound = { ...sound, attack: 0.001, wet: 0.18 }
+        this.burst(0.075, 0.64, 2900, time, { ...ignition, filterEnd: 850 })
+        this.burst(0.16, 0.48, 260, time, {
+          ...ignition,
+          hold: 0.035,
+          filterEnd: 105
+        })
+        this.burst(0.42, 0.5, 1300, time + 0.012, {
+          ...ignition,
+          attack: 0.004,
+          hold: 0.13,
+          filterEnd: 240
+        })
         this.burst(
-          0.2,
-          0.2,
-          2100,
-          time + 0.045,
-          { ...sound, filterEnd: 650 },
+          0.24,
+          0.24,
+          2200,
+          time + 0.018,
+          { ...ignition, hold: 0.04, filterEnd: 600 },
           'bandpass'
         )
       } else {
@@ -838,17 +891,30 @@ export class GameAudio {
         this.burst(0.065, 0.25, 1800, time + 0.14, sound, 'bandpass')
         this.burst(0.045, 0.17, 2500, time + 0.225, sound, 'bandpass')
       } else if (cue === 'attack') {
-        this.rasp(283, 263, 0.17, 0.2, time, sound, 1700)
-        for (let strike = 0; strike < 3; strike++)
-          this.burst(
-            0.055,
-            0.31 - strike * 0.055,
-            3400 - strike * 570,
-            time + strike * 0.047,
-            sound,
-            'bandpass'
-          )
-        this.burst(0.16, 0.2, 580, time, sound)
+        // A dry weapon report, chamber punch and tearing steel; no ringing notes.
+        const steel: Sound = { ...sound, attack: 0.001, wet: 0.045 }
+        this.burst(
+          0.045,
+          0.78,
+          3400,
+          time,
+          { ...steel, filterEnd: 1200 },
+          'highpass'
+        )
+        this.burst(0.07, 0.52, 1800, time, { ...steel, filterEnd: 520 })
+        this.burst(0.2, 0.65, 240, time, {
+          ...steel,
+          hold: 0.025,
+          filterEnd: 85
+        })
+        this.burst(
+          0.18,
+          0.38,
+          1100,
+          time + 0.005,
+          { ...steel, attack: 0.002, hold: 0.045, filterEnd: 380 },
+          'bandpass'
+        )
       } else {
         this.rasp(239, 223, 0.13, 0.18, time, sound, 1600)
         const delays = [0, 0.055, 0.13, 0.24, 0.39]
@@ -871,10 +937,37 @@ export class GameAudio {
         this.burst(0.1, 0.35, 1400, time, sound)
         this.burst(0.1, 0.3, 1100, time + 0.24, sound)
       } else if (cue === 'attack') {
-        this.rasp(70, 59, 0.4, 0.42, time, sound, 370)
-        this.burst(0.15, 0.4, 980, time, sound)
-        this.burst(0.32, 0.3, 460, time + 0.025, sound)
-        this.rasp(137, 121, 0.1, 0.21, time + 0.2, sound, 1050)
+        // Ignition breaks the pressure seal; combustion and exhaust carry the weight.
+        this.burst(
+          0.075,
+          0.62,
+          2600,
+          time,
+          { ...sound, filterEnd: 900 },
+          'highpass'
+        )
+        this.rasp(
+          77,
+          47,
+          0.38,
+          0.5,
+          time,
+          { ...sound, attack: 0.003, hold: 0.06 },
+          250
+        )
+        this.burst(0.34, 0.48, 1550, time + 0.018, {
+          ...sound,
+          attack: 0.012,
+          hold: 0.09,
+          filterEnd: 340
+        })
+        this.rasp(119, 86, 0.26, 0.22, time + 0.035, sound, 610)
+        this.burst(0.5, 0.25, 720, time + 0.06, {
+          ...sound,
+          attack: 0.012,
+          hold: 0.1,
+          filterEnd: 190
+        })
       } else {
         this.rasp(93, 57, 1.08, 0.37, time, sound, 360)
         this.burst(0.88, 0.35, 1100, time, { ...sound, filterEnd: 170 })
@@ -943,32 +1036,22 @@ export class GameAudio {
   }
 
   private plasmaPulse(time: number) {
-    // A hard arc, held electrical body and short punch resolve before 110 ms.
-    this.burst(0.03, 0.75, 6800, time, {
-      attack: 0.001,
-      hold: 0.007,
-      wet: 0.06
-    })
-    this.burst(
-      0.095,
-      0.68,
-      1750,
-      time,
-      {
-        rough: true,
-        attack: 0.001,
-        hold: 0.032,
-        filterEnd: 1300,
-        wet: 0.08
-      },
-      'bandpass'
-    )
-    this.rasp(181, 165, 0.082, 0.48, time, { attack: 0.001, wet: 0.06 }, 1900)
-    this.tone(105, 64, 0.09, 0.48, 'triangle', time, {
-      attack: 0.001,
-      wet: 0.05
-    })
-    this.burst(0.026, 0.27, 3400, time + 0.05, { wet: 0.08 }, 'bandpass')
+    const buffer = this.samples.plasma
+    if (!buffer) {
+      // A quiet emergency cue only if the recorded asset cannot be decoded.
+      this.burst(0.08, 0.3, 1800, time, { rough: true, wet: 0.04 })
+      return
+    }
+    const ctx = this.context!
+    const source = ctx.createBufferSource()
+    const gain = ctx.createGain()
+    source.buffer = buffer
+    gain.gain.value = 0.72
+    source.connect(gain)
+    // Preserve the original recording's complete PCM, native pitch and envelope.
+    this.route(source, gain, [], time + buffer.duration, { wet: 0.06 })
+    source.start(time)
+    source.stop(time + buffer.duration)
   }
 
   private shutdownCharge(time: number) {
@@ -1245,6 +1328,7 @@ export class GameAudio {
       this.playerVoice(time, false)
     } else if (type === 'player-death') {
       this.playerVoice(time, true)
+      this.updatePlasmaIdle()
     } else if (type === 'kill') {
       this.enemyCue(detail.kind ?? 'deception', 'death', time, spatial)
     } else if (type === 'hit') {
@@ -1253,6 +1337,7 @@ export class GameAudio {
       this.pressureDoor(time, detail.doorAction ?? 'open', spatial)
     } else if (type === 'win') {
       this.shuttingDown = true
+      this.updatePlasmaIdle()
       // The switch hits its stop; relay banks drop out while the motors coast down.
       this.burst(0.11, 0.44, 1700, time, { rough: true, wet: 0.08 })
       this.tone(96, 27, 0.25, 0.35, 'sine', time, { wet: 0.08 })
@@ -1305,6 +1390,7 @@ export class GameAudio {
     this.humGain = this.airGain = undefined
     this.airFilter = undefined
     this.noise = undefined
+    this.plasmaIdleGain = undefined
     this.samples = {}
     this.painVoices = []
   }

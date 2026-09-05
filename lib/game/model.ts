@@ -146,6 +146,7 @@ export interface Projectile extends Point3 {
   owner: 'player' | 'enemy'
   /** Firing identity for presentation; kind still controls collision and damage. */
   enemyKind?: EnemyKind
+  sourceEnemyId?: string
   life: number
   vy: number
 }
@@ -1341,6 +1342,7 @@ export class GameWorld {
         kind: enemy.kind === 'sam' ? 'rocket' : 'enemy',
         owner: 'enemy',
         enemyKind: enemy.kind,
+        sourceEnemyId: enemy.id,
         life: 7
       })
     }
@@ -1369,23 +1371,22 @@ export class GameWorld {
       let target: Enemy | null = null
       let barrelHit: Barrel | null = null
       let playerHit = false
-      if (projectile.owner === 'player') {
-        for (const enemy of this.enemies) {
-          if (enemy.health <= 0) continue
-          const hit = rayCylinder(
-            origin,
-            ray,
-            enemy,
-            ENEMY_STATS[enemy.kind].radius + 0.12,
-            ENEMY_HEIGHT[enemy.kind]
-          )
-          if (hit < hitDistance) {
-            hitDistance = hit
-            target = enemy
-            impact = true
-          }
+      for (const enemy of this.enemies) {
+        if (enemy.health <= 0 || enemy.id === projectile.sourceEnemyId) continue
+        const hit = rayCylinder(
+          origin,
+          ray,
+          enemy,
+          ENEMY_STATS[enemy.kind].radius + 0.12,
+          ENEMY_HEIGHT[enemy.kind]
+        )
+        if (hit < hitDistance) {
+          hitDistance = hit
+          target = enemy
+          impact = true
         }
-      } else {
+      }
+      if (projectile.owner === 'enemy') {
         const hit = rayCylinder(
           origin,
           ray,
@@ -1397,6 +1398,7 @@ export class GameWorld {
           hitDistance = hit
           impact = true
           playerHit = true
+          target = null
         }
       }
       for (const barrel of this.barrels) {
@@ -1480,7 +1482,6 @@ export class GameWorld {
         }
         this.blastBarrels(projectile, 12, 340, barrelHit)
       } else {
-        if (target) this.damageEnemy(target, 17)
         if (projectile.kind === 'rocket') {
           this.events.push({
             type: 'explosion',
@@ -1496,6 +1497,30 @@ export class GameWorld {
             projectile.y - center.y,
             projectile.z - center.z
           )
+          // Resolve other monsters first, even when the same blast is fatal to
+          // the player. The launcher cannot collide with its own projectile.
+          for (const enemy of this.enemies) {
+            if (enemy.health <= 0 || enemy.id === projectile.sourceEnemyId)
+              continue
+            const enemyCenter = {
+              ...enemy,
+              y: enemy.y + ENEMY_HEIGHT[enemy.kind] * 0.5
+            }
+            const enemyDistance = Math.hypot(
+              projectile.x - enemyCenter.x,
+              projectile.y - enemyCenter.y,
+              projectile.z - enemyCenter.z
+            )
+            if (
+              enemy === target ||
+              (enemyDistance < 3.5 &&
+                this.clearSegment(projectile, enemyCenter))
+            )
+              this.damageEnemy(
+                enemy,
+                enemy === target ? 28 : 28 * (1 - enemyDistance / 3.5)
+              )
+          }
           this.blastBarrels(projectile, 3.5, 60, barrelHit)
           if (
             playerHit ||
@@ -1503,6 +1528,8 @@ export class GameWorld {
           )
             this.damagePlayer(playerHit ? 28 : 28 * (1 - separation / 3.5))
         } else {
+          if (target)
+            this.damageEnemy(target, projectile.owner === 'player' ? 17 : 16)
           if (barrelHit)
             this.damageBarrel(
               barrelHit,

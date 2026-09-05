@@ -173,6 +173,14 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     if (message.type() === 'error') consoleErrors.push(message.text())
     if (message.type() === 'warning') warnings.push(message.text())
   })
+  // Vercel serves this deployment endpoint; local `next start` does not.
+  await page.route('**/_vercel/insights/script.js', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: ''
+    })
+  )
   await page.goto('/')
   await page.getByTestId('new-game').click()
   await page.getByTestId('difficulty-10').check()
@@ -181,10 +189,21 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     'data-phase',
     'playing'
   )
-  await expect(page.getByTestId('game-shell')).toHaveAttribute(
-    'data-phase',
-    'playing'
-  )
+  await page.locator(viewport).evaluate((canvas) => {
+    const profiles = new Map<string, string>()
+    Object.defineProperty(window, '__projectileProfiles', { value: profiles })
+    const observe = () => {
+      const entries = JSON.parse(
+        (canvas as HTMLCanvasElement).dataset.projectileProfiles ?? '[]'
+      ) as { enemyKind: string; profile: string }[]
+      for (const entry of entries) profiles.set(entry.enemyKind, entry.profile)
+    }
+    new MutationObserver(observe).observe(canvas, {
+      attributes: true,
+      attributeFilter: ['data-projectile-profiles']
+    })
+    observe()
+  })
 
   const goals = LEVEL.route
 
@@ -496,6 +515,27 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
     median: fps[Math.floor(fps.length / 2)],
     max: fps.at(-1)
   }
+  const projectileProfiles = await page.evaluate(() => [
+    ...(
+      window as unknown as {
+        __projectileProfiles: Map<string, string>
+      }
+    ).__projectileProfiles
+  ])
+  const rangedEnemies = [
+    ...new Set(
+      LEVEL.enemies
+        .filter((enemy) => enemy.kind !== 'sycophant')
+        .map((enemy) => enemy.kind)
+    )
+  ]
+  expect(projectileProfiles.map(([kind]) => kind)).toEqual(
+    expect.arrayContaining(rangedEnemies)
+  )
+  expect(new Set(projectileProfiles.map(([, profile]) => profile)).size).toBe(
+    rangedEnemies.length
+  )
+  for (const [kind, profile] of projectileProfiles) expect(profile).toBe(kind)
   console.log(
     `Busy encounter FPS: ${JSON.stringify(performance)}; browser=${browser.version()}; cpu=${cpus()[0]?.model}`
   )
@@ -515,6 +555,7 @@ test('full level reaches Sam, defeats him, and activates the shutdown finale @sl
         weaponNotices: [...weaponNotices],
         vanquishedKinds: [...vanquishedKinds],
         bossEscalationSeen,
+        projectileProfiles,
         busyFrameSamples,
         final
       },

@@ -853,7 +853,7 @@ export const LEVEL = {
     enemy('reinforcement-return-clip', 'paperclip', 12, 19)
   ],
   pickups: [
-    pickup('rlhf', 'weapon', 29, 49, 24, { weapon: 1, ammoPool: 1 }),
+    pickup('rlhf', 'weapon', 29, 50, 24, { weapon: 1, ammoPool: 1 }),
     pickup('interp', 'weapon', 21, 45, 110, { weapon: 2, ammoPool: 2 }),
     pickup('opening-grass', 'health', 30, 49, 35),
     pickup('opening-rails', 'armor', 28, 51, 90),
@@ -892,6 +892,7 @@ export const LEVEL = {
   ],
   /** The intended main journey; browser tests derive navigation from these points. */
   route: [
+    at(29, 50),
     at(28, 51),
     at(27, 50),
     at(27, 49),
