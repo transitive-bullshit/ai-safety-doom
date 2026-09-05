@@ -5,10 +5,6 @@
 </p>
 
 <p align="center">
-  <strong>They built a god. You brought a shotgun.</strong>
-</p>
-
-<p align="center">
   <a href="https://p-doom.transitivebullsh.it"><strong>▶ START TRAINING RUN</strong></a>
 </p>
 
@@ -36,7 +32,11 @@ _Human feedback. At close range._
 
 [![Sam guards the training core as the researcher brings out the Big Fuckin’ Shutdown Button](docs/images/boss.jpg)](https://p-doom.transitivebullsh.it)
 
-_Have you tried turning it off?_ **[Enter the lab →](https://p-doom.transitivebullsh.it)**
+_Have you tried turning it off?_
+
+<p align="center">
+  <a href="https://p-doom.transitivebullsh.it"><strong>▶ ENTER THE LAB</strong></a>
+</p>
 
 ## Controls
 
