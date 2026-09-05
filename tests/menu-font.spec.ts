@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 
 test('the first visible menu already contains its final labels before hydration', async ({
   page
@@ -31,6 +32,10 @@ test('the first visible menu already contains its final labels before hydration'
   const before = await label.boundingBox()
   const client = await page.context().newCDPSession(page)
   const first = await client.send('Page.captureScreenshot', { format: 'png' })
+  await writeFile(
+    testInfo.outputPath('before-hydration.png'),
+    Buffer.from(first.data, 'base64')
+  )
   await testInfo.attach('before-hydration', {
     body: Buffer.from(first.data, 'base64'),
     contentType: 'image/png'
@@ -65,6 +70,10 @@ test('cold menu labels keep their final appearance while the web font loads', as
   })
   const client = await page.context().newCDPSession(page)
   const first = await client.send('Page.captureScreenshot', { format: 'png' })
+  await writeFile(
+    testInfo.outputPath('font-delayed-before.png'),
+    Buffer.from(first.data, 'base64')
+  )
   await testInfo.attach('font-delayed-before', {
     body: Buffer.from(first.data, 'base64'),
     contentType: 'image/png'
@@ -80,6 +89,10 @@ test('cold menu labels keep their final appearance while the web font loads', as
     }
   })
   const final = await client.send('Page.captureScreenshot', { format: 'png' })
+  await writeFile(
+    testInfo.outputPath('font-delayed-after.png'),
+    Buffer.from(final.data, 'base64')
+  )
   await testInfo.attach('font-delayed-after', {
     body: Buffer.from(final.data, 'base64'),
     contentType: 'image/png'

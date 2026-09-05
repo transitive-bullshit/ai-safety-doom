@@ -16,6 +16,16 @@ Formatting, lint, TypeScript, and all 85 unit tests pass. The unit coverage incl
 
 `pnpm build` passes and prerenders the root route. The Three.js runtime and game assets preload when difficulty selection opens; the main title does not create a game renderer. The combined pass is served and verified locally on port 3001.
 
+## First-paint menu, README banner, and console greeting
+
+The cold-font regression reproduced a visible fallback-to-bitmap swap: the Start label changed from 475.84 × 51 to 518.83 × 58.66 CSS pixels. An aborted font request also produced a bitmap using the wrong face. The main three labels now include their final raster pixels in the initial HTML via `title-bitmaps.json`, while the existing Goldman Bold face is embedded in the initial stylesheet. Dynamic labels rasterize only after the font successfully loads; failed or empty loads retain readable text.
+
+Seventeen Chrome checks pass across the new delayed-font, pre-hydration, failed-font, and greeting cases plus existing title, credits, and social-link journeys. Initial labels remain visible with final pixels while hydration scripts are held, and their geometry stays fixed. The console Easter egg runs only in a client effect, once per page load despite React effect replay and menu navigation.
+
+All four focused font/greeting checks also pass against the final production build on port 3001. The cold pre-hydration screenshot was visually inspected and shows the final menu typography. Evidence: `/private/tmp/pdoom-font-production-proof/`; [font and bitmap provenance](design/menu-typography.md).
+
+The README header now uses `docs/images/readme-banner.jpg`, an opaque 1600 × 540 JPEG with the existing stone logo, subtitle, and dark lab/cloud atmosphere. It was composed in Chrome from unchanged game assets and an actual arrival screenshot; the source is `/private/tmp/pdoom-readme-banner.mjs`. The banner and remaining screenshots all retain the direct play URL as their image link.
+
 ## Plasma, shutdown charge, and pickup audio
 
 Plasma now has an immediate electrical crack, a 32 ms held body, low impact, and delayed arc, with all five dry layers finished within 100 ms for its 110 ms firing cadence. Shutdown retains its 720 ms gameplay windup, but the charging motor/current now intensifies and holds until just before release. The discharge holds its blast body for 260 ms and decays over 1.2 seconds, with descending low impact and staggered aftershocks. It also layers the already loaded CC0 pistol impulse at 0.58× rate; no new recording or download was added. Touch Grass uses a medical pressure seal, relief hiss, steady low hum, and latch; Training Data uses a cartridge slam, ratchet, and receiver lock with three distinct ammunition-pool registers. [Current audio design and provenance](design/audio-refresh.md).
