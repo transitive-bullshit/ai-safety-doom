@@ -891,7 +891,7 @@ export class GameAudio {
     const ctx = this.context!
     const source = ctx.createBufferSource()
     const gain = ctx.createGain()
-    // Preserve the original recording's pitch, crunch, and complete death cry.
+    // Play each prepared recording at its authored pitch and complete length.
     source.buffer = buffer
     gain.gain.value = (spatial.level ?? 1) * (kind === 'sam' ? 1.1 : 1)
     source.connect(gain)

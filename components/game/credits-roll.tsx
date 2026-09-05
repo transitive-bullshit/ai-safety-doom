@@ -22,7 +22,7 @@ const credits = [
     role: 'SHOTGUN RECORDINGS',
     lines: ['MICHORVATH', 'SPRINGYSPRINGO']
   },
-  { role: 'PLAYER VOICE RECORDINGS', lines: ['HAELDB'] },
+  { role: 'PLAYER & BOSS VOICES', lines: ['HAELDB'] },
   { role: 'DOOM MONSTER VOICES', lines: ['ID SOFTWARE'] },
   {
     role: 'IN THE SPIRIT OF',

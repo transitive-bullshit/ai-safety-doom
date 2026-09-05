@@ -778,7 +778,7 @@ const deathRecordings = [
   { kind: 'deception', key: 'doomImpDeath', duration: 0.643 },
   { kind: 'sycophant', key: 'doomZombieDeath', duration: 1.173 },
   { kind: 'paperclip', key: 'doomDemonDeath', duration: 1.108 },
-  { kind: 'sam', key: 'doomBaronDeath', duration: 0.998 }
+  { kind: 'sam', key: 'doomBaronDeath', duration: 1.78 }
 ] as const
 
 function deathAssets(): GameAudioAssets {
@@ -790,7 +790,7 @@ function deathAssets(): GameAudioAssets {
   )
 }
 
-void test('each enemy death plays only its matching Doom recording, at native pitch and full length', (context) => {
+void test('each enemy death plays only its matching recording, at authored pitch and full length', (context) => {
   const assets = deathAssets()
   const { audio, output } = setup(context, true, assets)
   output.currentTime = 2

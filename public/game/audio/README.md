@@ -2,18 +2,17 @@
 
 ## Original Doom monster death recordings
 
-The four `doom-*-death.wav` files contain original **Doom** monster death audio from id Software's shareware 1.9 `DOOM1.WAD`. This is the original Doom option requested for enemy deaths, not an approximation or Doom 64 recording. The player pain/death recordings and RLHF shotgun file are unchanged.
+The imp, zombie, and demon `doom-*-death.wav` files contain original **Doom** monster death audio from id Software's shareware 1.9 `DOOM1.WAD`. This is the original Doom option requested for enemy deaths, not an approximation or Doom 64 recording. The boss asset retains its `doom-baron-death.wav` filename but now uses the separate recorded vocal described below. The player pain/death recordings and RLHF shotgun file are unchanged.
 
-The source WAD was already inspected during the engine research and retained locally. Its source is the [tagged wasmdoom v0.0.2 data file](https://github.com/theMagicalKarp/wasmdoom/blob/v0.0.2/wads/doom1.wad), available as a [raw download](https://raw.githubusercontent.com/theMagicalKarp/wasmdoom/v0.0.2/wads/doom1.wad). It is 4,196,020 bytes with 1,264 lumps. Only the four sounds below are included in this project; the WAD itself is not bundled.
+The source WAD was already inspected during the engine research and retained locally. Its source is the [tagged wasmdoom v0.0.2 data file](https://github.com/theMagicalKarp/wasmdoom/blob/v0.0.2/wads/doom1.wad), available as a [raw download](https://raw.githubusercontent.com/theMagicalKarp/wasmdoom/v0.0.2/wads/doom1.wad). It is 4,196,020 bytes with 1,264 lumps. Only the three sounds below are included in this project; the WAD itself is not bundled.
 
 | Game asset | Parody enemy | Original monster | WAD lump | PCM frames | Duration | WAV bytes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `doom-imp-death.wav` | Deceptive Alignment | Imp | `DSBGDTH1` | 7,089 | 0.642993 s | 7,134 |
 | `doom-zombie-death.wav` | Sycophancy | Possessed zombie | `DSPODTH1` | 12,931 | 1.172880 s | 12,976 |
 | `doom-demon-death.wav` | Paperclip Maximizer | Demon / Pinky | `DSSGTDTH` | 12,219 | 1.108299 s | 12,264 |
-| `doom-baron-death.wav` | Sam boss | Baron of Hell | `DSBRSDTH` | 11,003 | 0.998005 s | 11,048 |
 
-All four retain the native **11,025 Hz, mono, unsigned 8-bit PCM**. No resampling, pitch shifting, equalization, normalization, fades, or synthesis is baked into these files. The extraction removes the eight-byte DMX header and the 16 sample bytes at each end that the original DMX playback skips, then wraps the remaining PCM in a standard WAV container. A RIFF alignment byte is outside the audio data. Every exported PCM sample was verified byte-for-byte against its source lump. Some original samples reach full scale; playback gain supplies mix headroom.
+All three retain the native **11,025 Hz, mono, unsigned 8-bit PCM**. No resampling, pitch shifting, equalization, normalization, fades, or synthesis is baked into these files. The extraction removes the eight-byte DMX header and the 16 sample bytes at each end that the original DMX playback skips, then wraps the remaining PCM in a standard WAV container. A RIFF alignment byte is outside the audio data. Every exported PCM sample was verified byte-for-byte against its source lump. Some original samples reach full scale; playback gain supplies mix headroom.
 
 The monster assignments are verified against id Software's [original object definitions](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/info.c): `MT_TROOP`, `MT_POSSESSED`, `MT_SERGEANT`, and `MT_BRUISER` select these death-sound families. Doom's [`A_Scream`](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/p_enemy.c) chooses among two imp and three zombie variants; this demo uses the first variant of each family. The [`sounds.c` table](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/sounds.c) supplies their names. The 16-byte edge skip follows Chocolate Doom's documented DMX-compatible [`CacheSFX` implementation](https://github.com/chocolate-doom/chocolate-doom/blob/master/src/i_sdlsound.c). Sources checked September 5, 2026.
 
@@ -26,11 +25,9 @@ SHA-256:
 322ffe6b6c03e4330cc0e5f84bd81ab4164be441e5698edc1ae41219f99be15f  source DSBGDTH1 lump
 4bb739608e4a99525bf264668b6c215236db9c723f6da7b79652beef9ca55488  source DSPODTH1 lump
 2820ef3bb16ac1b8d0b430d712c3f693e467ecacbba5f0c703635d5f84892f13  source DSSGTDTH lump
-4c98e716984cd772deb7b9c570c3c12166817c59e76bef51de484b32ea5f75b6  source DSBRSDTH lump
 28cd8003e02355b319acd9e4adb72fa244639779cccf7abb00032872648028d4  doom-imp-death.wav
 1dbf8af67328d943f6e0e38e234c9a10a3638ab5931af96825740859217ea4ca  doom-zombie-death.wav
 df0c2e8fcca84d4996801ea7f97e15a1949dad6469cfc1b7705eb05db5b4af55  doom-demon-death.wav
-cea43ab5709291c79455db077fecdc191b433522c3b722561f2f423f2272dcc0  doom-baron-death.wav
 ```
 
 To reproduce these WAV containers, run this Python from the repository root with the source WAD path as its argument:
@@ -52,7 +49,7 @@ for index in range(count):
 
 for monster, name in [
     ("imp", "DSBGDTH1"), ("zombie", "DSPODTH1"),
-    ("demon", "DSSGTDTH"), ("baron", "DSBRSDTH"),
+    ("demon", "DSSGTDTH"),
 ]:
     lump = lumps[name]
     encoding, rate, length = struct.unpack_from("<HHI", lump)
@@ -63,6 +60,29 @@ for monster, name in [
     header += b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate, 1, 8)
     header += b"data" + struct.pack("<I", len(pcm))
     Path(f"public/game/audio/doom-{monster}-death.wav").write_bytes(header + pcm + padding)
+```
+
+## Sam boss death recording
+
+`doom-baron-death.wav` now uses **HaelDB's `3yell9.wav`**, a different take from the approved player death voice, from [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) under the creator's offered [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) option. The original archive and license provenance are documented in the player-vocal section below. The original file is preserved byte-for-byte as `sources/haeldb-3yell9.wav` and matches archive entry `yelling sounds/3yell9.wav`.
+
+The 0.36–1.82-second excerpt is lowered to 0.82× pitch, filtered, equalized, moderately compressed, limited, and faded. It retains a sustained vocal body and natural tail without added bitcrushing, soft clipping, synthetic layers, or baked-in reverb. The result is **1.78 seconds**, 78,498 frames, mono 44.1 kHz 16-bit PCM, 157,074 bytes. Peak is −1.51 dBFS and RMS is −9.59 dBFS, with no full-scale clipped samples. The existing runtime plays it at rate 1 with its full duration, Sam's 1.1 gain, positional attenuation, and room reflections. Source selection and validation used recording provenance and signal measurements; perceptual judgment remains with the listener.
+
+The filename is retained for asset compatibility; this is **no longer the Doom Baron recording**. The previous WAV was valid and matched `DSBRSDTH` exactly, but its processed 8-bit character was replaced in response to playback feedback. No other weapon, player, or enemy WAV changed.
+
+SHA-256:
+
+```text
+f9c63c26c2dafb9c0dd0859c56c79c9012faf32bf2defdc8b53b19ed23ad0704  sources/haeldb-3yell9.wav
+47f87b055f6a8cafe269c4a8f28be07c572edc83b0958ef254da02c4a10bcb4d  doom-baron-death.wav
+```
+
+Recreate from this directory using FFmpeg:
+
+```sh
+ffmpeg -i sources/haeldb-3yell9.wav \
+  -af 'aformat=channel_layouts=mono,atrim=start=0.36:end=1.82,asetpts=PTS-STARTPTS,asetrate=36162,aresample=44100,highpass=f=65,lowpass=f=7200,equalizer=f=160:t=q:w=0.9:g=2.5,equalizer=f=1900:t=q:w=1:g=1,acompressor=threshold=0.28:ratio=2.5:attack=4:release=90:makeup=1.3,volume=1.8,alimiter=limit=0.84:level=0:latency=1,apad,atrim=duration=1.78,afade=t=in:d=0.004,afade=t=out:st=1.66:d=0.12' \
+  -map_metadata -1 -ac 1 -ar 44100 -c:a pcm_s16le doom-baron-death.wav
 ```
 
 ## RLHF shotgun recordings
