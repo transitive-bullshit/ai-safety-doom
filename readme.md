@@ -12,8 +12,6 @@ The evals are green. The containment doors are open. The paperclips are multiply
 
 **P(DOOM)** is an affectionate AI safety parody wrapped in a grimy, Doom 64-inspired browser shooter. You're an Eliezer-inspired researcher in a frontier lab with a few unresolved alignment problems. Apply human feedback at close range, fight your way to the big red button, and shut down the training run.
 
-Deployment delayed. By 48 hours.
-
 [![A raised arrival platform overlooks the breached frontier lab, with the System Prompt pistol and researcher HUD](docs/images/arrival.jpg)](https://p-doom.transitivebullsh.it)
 
 _Welcome to the lab. It's only an internal eval. What could go wrong?_

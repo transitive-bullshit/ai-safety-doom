@@ -1,10 +1,70 @@
 # Recorded game audio
 
+## Original Doom plasma firing and derived idle loop
+
+`doom-plasma.wav` replaces the procedural plasma firing sound with the original **Doom** `DSPLASMA` recording. The retained shareware 1.9 WAD does not contain that lump. The source instead is the [Old Doom sound archive's DSPLASMA WAV](http://www.wolfensteingoodies.com/archives/olddoom/sounds/dsplasma.wav), downloaded September 5, 2026 and preserved unchanged as `sources/doom-dsplasma-archive.wav`. The archive download contains native **11,025 Hz mono unsigned 8-bit PCM**. Its exported DMX edge padding consists of 16 repeated samples at each end; the playable file removes only that padding. All 5,662 remaining samples were verified byte-for-byte against the archive download. No equalization, synthesis, pitch shift, normalization, or fades are applied to the firing asset. Its duration is **0.513560 seconds** and its WAV size is **5,706 bytes**. Some source samples reach full scale; runtime gain supplies headroom.
+
+The sound assignment is verified in id Software's original [`MT_PLASMA` definition](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/info.c), which uses `sfx_plasma` at projectile spawn, and the [`sounds.c` table](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/sounds.c). The archived WAV, rather than a locally available registered WAD, is the source of these PCM bytes. This is the original Doom option requested by the user, not a Doom 64 recording or a newly synthesized substitute.
+
+`doom-plasma-idle.wav` is a separate **derived ambience loop**, not an original Doom plasma-idle asset. Original Doom's [`A_WeaponReady`](https://github.com/id-Software/DOOM/blob/master/linuxdoom-1.10/p_pspr.c) starts a dedicated idle sound for the chainsaw but not the plasma rifle. For the requested quiet roiling sound, overlapping pitched excerpts of the actual plasma recording are crossfaded into a 2.56-second loop and filtered to 120–1,300 Hz. No oscillator or noise synthesis is added. The loop is mono 22,050 Hz 16-bit PCM, 56,448 frames, 112,940 bytes, with a peak of 0.65 and RMS of 0.1894 before its quiet runtime gain.
+
+Firing plays one full recorded sample per shot at native pitch and the existing 110-millisecond cadence. The idle loop is created once per audio context, fades in only while the plasma weapon is selected during play, fades out on weapon changes/death/lab shutdown, remains muted through the common output, and stops with disposal. Pause suspends the whole audio context immediately and resets the idle gain; resume fades it back in when appropriate. If the firing download fails, only a short quiet emergency cue is used; an unavailable idle asset leaves that loop silent. Prepared shotgun, pistol, player vocals, and enemy death assets remain independent.
+
+Both files derive from copyrighted Doom game audio. They are **not CC0** and are not relicensed by this repository's MIT license or the Doom engine source-code license. See [NOTICES.md](../../../NOTICES.md).
+
+SHA-256:
+
+```text
+19cd26033d246d30e47a24fdf0ef3684531e0794a8238e6d380c6a8624d1cd19  sources/doom-dsplasma-archive.wav
+e95e64a4be5a192dabfaa79c95dfb1bbb629aed03fe404420fc57cf696e4d2c7  doom-plasma.wav
+ea861b5b71e8e331bb1213ed1d55a36137fc2cbb4a6f43231da839280c2392e9  doom-plasma-idle.wav
+```
+
+To reproduce both assets from this directory, run this authoring script with Python, NumPy and SciPy. These are not game/runtime dependencies.
+
+```python
+from pathlib import Path
+import struct
+import wave
+import numpy as np
+from scipy.signal import butter, sosfilt
+
+with wave.open("sources/doom-dsplasma-archive.wav") as source:
+    rate = source.getframerate()
+    pcm = source.readframes(source.getnframes())[16:-16]
+header = b"RIFF" + struct.pack("<I", 36 + len(pcm))
+header += b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate, 1, 8)
+header += b"data" + struct.pack("<I", len(pcm))
+Path("doom-plasma.wav").write_bytes(header + pcm)
+
+original = (np.frombuffer(pcm, dtype=np.uint8).astype(float) - 128) / 128
+output_rate, size = 22050, 56448
+loop, weight = np.zeros(size), np.zeros(size)
+for index in range(16):
+    speed = [.38, .47, .43, .51][index % 4]
+    length = round(.27 / speed * output_rate)
+    positions = (.045 + np.arange(length) / output_rate * speed) * rate
+    grain = np.interp(positions, np.arange(len(original)), original)
+    window = np.sin(np.linspace(0, np.pi, length)) ** 2
+    positions = (np.arange(length) + index * (size // 16)) % size
+    np.add.at(loop, positions, grain * window)
+    np.add.at(weight, positions, window)
+loop /= np.maximum(weight, 1e-6)
+sos = butter(2, [120, 1300], btype="bandpass", fs=output_rate, output="sos")
+loop = sosfilt(sos, np.tile(loop, 3))[size:2 * size]
+loop *= .65 / max(abs(loop))
+with wave.open("doom-plasma-idle.wav", "wb") as target:
+    target.setnchannels(1)
+    target.setsampwidth(2)
+    target.setframerate(output_rate)
+    target.writeframes(np.rint(loop * 32767).astype("<i2").tobytes())
+```
+
 ## Original Doom monster death recordings
 
 The imp, zombie, and demon `doom-*-death.wav` files contain original **Doom** monster death audio from id Software's shareware 1.9 `DOOM1.WAD`. This is the original Doom option requested for enemy deaths, not an approximation or Doom 64 recording. The boss asset retains its `doom-baron-death.wav` filename but now uses the separate recorded vocal described below. The player pain/death recordings and RLHF shotgun file are unchanged.
 
-The source WAD was already inspected during the engine research and retained locally. Its source is the [tagged wasmdoom v0.0.2 data file](https://github.com/theMagicalKarp/wasmdoom/blob/v0.0.2/wads/doom1.wad), available as a [raw download](https://raw.githubusercontent.com/theMagicalKarp/wasmdoom/v0.0.2/wads/doom1.wad). It is 4,196,020 bytes with 1,264 lumps. Only the three sounds below are included in this project; the WAD itself is not bundled.
+The source WAD was already inspected during the engine research and retained locally. Its source is the [tagged wasmdoom v0.0.2 data file](https://github.com/theMagicalKarp/wasmdoom/blob/v0.0.2/wads/doom1.wad), available as a [raw download](https://raw.githubusercontent.com/theMagicalKarp/wasmdoom/v0.0.2/wads/doom1.wad). It is 4,196,020 bytes with 1,264 lumps. The three monster sounds below are extracted from that WAD; the WAD itself is not bundled.
 
 | Game asset | Parody enemy | Original monster | WAD lump | PCM frames | Duration | WAV bytes |
 | --- | --- | --- | --- | --- | --- | --- |
